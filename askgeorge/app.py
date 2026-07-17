@@ -1,9 +1,9 @@
 """AskGeorge — an AI representative that answers recruiter questions as George Traskas.
 
-Loads George's professional background from the ``me/`` directory, grounds a
-Gemini model in it, and serves a Gradio chat interface. Unknown questions and
-interested visitors are captured via tool calls (Pushover push notification if
-configured, application log otherwise).
+Loads George's professional background from the ``me/`` directory, grounds an
+LLM (any model via OpenRouter) in it, and serves a streaming Gradio chat
+interface. Unknown questions and interested visitors are captured via tool
+calls and emailed to George through Gmail SMTP (application log fallback).
 """
 
 from __future__ import annotations
@@ -11,22 +11,24 @@ from __future__ import annotations
 import json
 import logging
 import os
+import smtplib
 from dataclasses import dataclass
+from email.message import EmailMessage
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 import gradio as gr
-import requests
 from dotenv import load_dotenv
 from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
-GEMINI_BASE_URL: str = "https://generativelanguage.googleapis.com/v1beta/openai/"
-CHAT_MODEL: str = "gemini-2.5-flash"
+OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+DEFAULT_CHAT_MODEL: str = "google/gemini-3.5-flash"
 DATA_DIR: Path = Path(__file__).parent / "me"
 MAX_TOOL_ROUNDS: int = 3
-PUSHOVER_API_URL: str = "https://api.pushover.net/1/messages.json"
+SMTP_HOST: str = "smtp.gmail.com"
+SMTP_PORT: int = 465
 
 TOOL_SCHEMAS: list[dict[str, Any]] = [
     {
@@ -79,7 +81,7 @@ class Profile:
     """George's background documents used to ground the assistant.
 
     Attributes:
-        linkedin: Full LinkedIn profile export as plain text.
+        linkedin: Full LinkedIn profile export in Markdown.
         summary: Distilled professional summary in Markdown.
         projects: Deep-dive project portfolio in Markdown.
     """
@@ -93,7 +95,7 @@ class Profile:
         """Load all background documents from ``data_dir``.
 
         Args:
-            data_dir: Directory containing linkedin.txt, summary.md, projects.md.
+            data_dir: Directory containing linkedin.md, summary.md, projects.md.
 
         Returns:
             A populated :class:`Profile`.
@@ -102,7 +104,7 @@ class Profile:
             FileNotFoundError: If any expected document is missing.
         """
         return cls(
-            linkedin=(data_dir / "linkedin.txt").read_text(encoding="utf-8"),
+            linkedin=(data_dir / "linkedin.md").read_text(encoding="utf-8"),
             summary=(data_dir / "summary.md").read_text(encoding="utf-8"),
             projects=(data_dir / "projects.md").read_text(encoding="utf-8"),
         )
@@ -116,44 +118,48 @@ class Profile:
         )
 
 
-class NotificationService:
-    """Sends push notifications via Pushover, falling back to the app log.
+class EmailNotifier:
+    """Emails notifications from George's Gmail to itself via SMTP.
 
-    Attributes:
-        is_configured: True when Pushover credentials are available.
+    Uses a Gmail App Password (GMAIL_ADDRESS / GMAIL_APP_PASSWORD env vars).
+    Falls back to the application log when not configured, so nothing is ever
+    written to the container's ephemeral filesystem.
     """
 
     def __init__(self) -> None:
-        self._token: str | None = os.getenv("PUSHOVER_TOKEN")
-        self._user: str | None = os.getenv("PUSHOVER_USER")
+        self._address: str | None = os.getenv("GMAIL_ADDRESS")
+        self._app_password: str | None = os.getenv("GMAIL_APP_PASSWORD")
 
     @property
     def is_configured(self) -> bool:
-        """Return True if Pushover credentials are present."""
-        return bool(self._token and self._user)
+        """Return True if Gmail SMTP credentials are present."""
+        return bool(self._address and self._app_password)
 
-    def notify(self, message: str) -> None:
-        """Send ``message`` as a push notification, or log it as a fallback.
+    def notify(self, subject: str, body: str) -> None:
+        """Send a notification email, or log it as a fallback.
 
         Args:
-            message: Human-readable notification text.
+            subject: Email subject line.
+            body: Plain-text email body.
         """
         if not self.is_configured:
-            logger.info("Notification (Pushover not configured): %s", message)
+            logger.info("Notification (email not configured): %s — %s", subject, body)
             return
+        email = EmailMessage()
+        email["From"] = self._address
+        email["To"] = self._address
+        email["Subject"] = subject
+        email.set_content(body)
         try:
-            response = requests.post(
-                PUSHOVER_API_URL,
-                data={"token": self._token, "user": self._user, "message": message},
-                timeout=10,
-            )
-            response.raise_for_status()
-        except requests.RequestException as exc:
-            logger.error("Pushover notification failed: %s", exc)
+            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15) as server:
+                server.login(self._address or "", self._app_password or "")
+                server.send_message(email)
+        except (smtplib.SMTPException, OSError) as exc:
+            logger.error("Email notification failed: %s", exc)
 
 
 class AskGeorgeAgent:
-    """Chat agent that answers questions in first person as George Traskas.
+    """Streaming chat agent that answers in first person as George Traskas.
 
     Grounds every answer in the loaded :class:`Profile` and uses tool calls to
     capture unknown questions and visitor contact requests.
@@ -162,27 +168,26 @@ class AskGeorgeAgent:
     def __init__(
         self,
         profile: Profile,
-        notifier: NotificationService,
+        notifier: EmailNotifier,
         client: OpenAI | None = None,
     ) -> None:
-        api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+        api_key = os.getenv("OPENROUTER_API_KEY")
         if client is None and not api_key:
-            raise EnvironmentError(
-                "Set GOOGLE_API_KEY (or GEMINI_API_KEY) to run AskGeorge."
-            )
-        self._client = client or OpenAI(base_url=GEMINI_BASE_URL, api_key=api_key)
+            raise EnvironmentError("Set OPENROUTER_API_KEY to run AskGeorge.")
+        self._client = client or OpenAI(base_url=OPENROUTER_BASE_URL, api_key=api_key)
+        self._model = os.getenv("OPENROUTER_MODEL", DEFAULT_CHAT_MODEL)
         self._notifier = notifier
         self._system_prompt = self._build_system_prompt(profile)
 
-    def chat(self, message: str, history: list[dict[str, Any]]) -> str:
-        """Answer one chat turn, resolving any tool calls along the way.
+    def chat(self, message: str, history: list[dict[str, Any]]) -> Iterator[str]:
+        """Stream one chat turn token by token, resolving tool calls between rounds.
 
         Args:
             message: The visitor's latest message.
             history: Prior turns in Gradio "messages" format.
 
-        Returns:
-            The assistant's reply text.
+        Yields:
+            The growing reply text, suitable for Gradio streaming.
         """
         messages: list[Any] = [
             {"role": "system", "content": self._system_prompt},
@@ -190,39 +195,100 @@ class AskGeorgeAgent:
             {"role": "user", "content": message},
         ]
         for _ in range(MAX_TOOL_ROUNDS):
-            choice = self._client.chat.completions.create(
-                model=CHAT_MODEL, messages=messages, tools=TOOL_SCHEMAS
-            ).choices[0]
-            if choice.finish_reason != "tool_calls":
-                return choice.message.content or ""
-            messages.append(choice.message)
-            for tool_call in choice.message.tool_calls or []:
+            content, tool_calls = "", {}
+            stream = self._client.chat.completions.create(
+                model=self._model, messages=messages, tools=TOOL_SCHEMAS, stream=True
+            )
+            for chunk in stream:
+                if not chunk.choices:
+                    continue
+                delta = chunk.choices[0].delta
+                if delta is None:
+                    continue
+                if delta.content:
+                    content += delta.content
+                    yield content
+                for call_delta in delta.tool_calls or []:
+                    slot = tool_calls.setdefault(
+                        call_delta.index, {"id": "", "name": "", "arguments": ""}
+                    )
+                    slot["id"] = call_delta.id or slot["id"]
+                    if call_delta.function is not None:
+                        slot["name"] = call_delta.function.name or slot["name"]
+                        slot["arguments"] += call_delta.function.arguments or ""
+            if not tool_calls:
+                if not content:
+                    yield "Sorry — I could not produce an answer. Please try again."
+                return
+            messages.append(self._assistant_tool_message(content, tool_calls))
+            for index in sorted(tool_calls):
+                call = tool_calls[index]
                 messages.append(
                     {
                         "role": "tool",
-                        "tool_call_id": tool_call.id,
-                        "content": json.dumps(self._dispatch_tool(tool_call)),
+                        "tool_call_id": call["id"],
+                        "content": json.dumps(
+                            self._dispatch_tool(call["name"], call["arguments"])
+                        ),
                     }
                 )
         logger.warning("Tool-call rounds exceeded %d; returning fallback.", MAX_TOOL_ROUNDS)
-        return "Sorry, something went wrong on my side — please try asking again."
+        yield "Sorry, something went wrong on my side — please try asking again."
 
-    def _dispatch_tool(self, tool_call: Any) -> dict[str, str]:
-        """Execute a single tool call and return its JSON-serializable result."""
-        arguments = json.loads(tool_call.function.arguments or "{}")
-        name = tool_call.function.name
+    def _dispatch_tool(self, name: str, arguments_json: str) -> dict[str, str]:
+        """Execute a single tool call and return its JSON-serializable result.
+
+        Args:
+            name: Tool name requested by the model.
+            arguments_json: JSON-encoded tool arguments.
+
+        Returns:
+            A status dict fed back to the model as the tool result.
+        """
+        try:
+            arguments = json.loads(arguments_json or "{}")
+        except json.JSONDecodeError as exc:
+            logger.error("Malformed tool arguments for %s: %s", name, exc)
+            return {"status": "error", "detail": "malformed arguments"}
         if name == "record_unknown_question":
-            self._notifier.notify(f"AskGeorge could not answer: {arguments.get('question')}")
+            self._notifier.notify(
+                subject="AskGeorge: unanswered question",
+                body=f"A visitor asked something I could not answer:\n\n{arguments.get('question')}",
+            )
         elif name == "record_contact_request":
             self._notifier.notify(
-                "AskGeorge contact request: "
-                f"{arguments.get('name', 'unknown')} <{arguments.get('email')}> — "
-                f"{arguments.get('notes', 'no notes')}"
+                subject="AskGeorge: new contact request",
+                body=(
+                    f"Name: {arguments.get('name', 'unknown')}\n"
+                    f"Email: {arguments.get('email')}\n"
+                    f"Notes: {arguments.get('notes', 'no notes')}"
+                ),
             )
         else:
             logger.error("Unknown tool requested: %s", name)
             return {"status": "error", "detail": f"unknown tool {name}"}
         return {"status": "recorded"}
+
+    @staticmethod
+    def _assistant_tool_message(
+        content: str, tool_calls: dict[int, dict[str, str]]
+    ) -> dict[str, Any]:
+        """Rebuild the assistant message that carried the streamed tool calls."""
+        return {
+            "role": "assistant",
+            "content": content or None,
+            "tool_calls": [
+                {
+                    "id": tool_calls[index]["id"],
+                    "type": "function",
+                    "function": {
+                        "name": tool_calls[index]["name"],
+                        "arguments": tool_calls[index]["arguments"],
+                    },
+                }
+                for index in sorted(tool_calls)
+            ],
+        }
 
     @staticmethod
     def _sanitize_history(history: list[dict[str, Any]]) -> list[dict[str, str]]:
@@ -260,11 +326,11 @@ def build_demo() -> gr.ChatInterface:
     """Create the Gradio chat interface for AskGeorge.
 
     Returns:
-        A configured, launchable :class:`gr.ChatInterface`.
+        A configured, launchable :class:`gr.ChatInterface` with streaming replies.
     """
     load_dotenv(override=True)
     logging.basicConfig(level=logging.INFO)
-    agent = AskGeorgeAgent(profile=Profile.load(), notifier=NotificationService())
+    agent = AskGeorgeAgent(profile=Profile.load(), notifier=EmailNotifier())
     return gr.ChatInterface(
         fn=agent.chat,
         type="messages",

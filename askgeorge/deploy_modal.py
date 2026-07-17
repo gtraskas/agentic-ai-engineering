@@ -4,10 +4,11 @@ Deploy with::
 
     modal deploy askgeorge/deploy_modal.py
 
-Requires a Modal secret named ``askgeorge-secret`` holding GOOGLE_API_KEY and,
-optionally, PUSHOVER_TOKEN / PUSHOVER_USER::
+Requires a Modal secret named ``askgeorge-secret`` holding OPENROUTER_API_KEY
+and, optionally, GMAIL_ADDRESS / GMAIL_APP_PASSWORD for email notifications::
 
-    modal secret create askgeorge-secret GOOGLE_API_KEY=... PUSHOVER_TOKEN=... PUSHOVER_USER=...
+    modal secret create askgeorge-secret OPENROUTER_API_KEY=... \
+        GMAIL_ADDRESS=... GMAIL_APP_PASSWORD=...
 """
 
 from __future__ import annotations
@@ -26,7 +27,6 @@ image = (
     .pip_install(
         "gradio>=5.0",
         "openai>=1.60",
-        "requests>=2.32",
         "python-dotenv>=1.0",
         "fastapi[standard]>=0.115",
     )

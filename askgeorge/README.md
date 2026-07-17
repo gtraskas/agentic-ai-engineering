@@ -1,16 +1,16 @@
 # AskGeorge
 
-An AI representative for Georgios Traskas. It answers questions from recruiters and hiring managers in first person, grounded strictly in George's professional background (`me/` directory: LinkedIn export, summary, project portfolio). Unknown questions and contact requests trigger push notifications via Pushover (optional).
+An AI representative for Georgios Traskas. It answers questions from recruiters and hiring managers in first person, with streaming (token-by-token) replies, grounded strictly in George's professional background (`me/` directory: LinkedIn profile, summary, project portfolio). Unknown questions and contact requests are emailed straight to George via Gmail SMTP — nothing is stored on the server's ephemeral disk.
 
-- **UI:** Gradio `ChatInterface`
-- **LLM:** Google Gemini Flash via the OpenAI-compatible API (free tier)
+- **UI:** Gradio `ChatInterface` (streaming)
+- **LLM:** any model via [OpenRouter](https://openrouter.ai) — default `google/gemini-3.5-flash`, switchable with one env var
 - **Hosting:** Modal (CPU container, scales to zero)
 
 ## Run locally
 
 ```bash
 uv sync
-cp .env.example .env   # add your GOOGLE_API_KEY
+cp .env.example .env   # add your OPENROUTER_API_KEY (and Gmail credentials, optional)
 uv run python askgeorge/app.py
 ```
 
@@ -19,7 +19,7 @@ uv run python askgeorge/app.py
 ```bash
 uv run modal setup                                   # once
 uv run modal secret create askgeorge-secret \
-    GOOGLE_API_KEY=... PUSHOVER_TOKEN=... PUSHOVER_USER=...
+    OPENROUTER_API_KEY=... GMAIL_ADDRESS=... GMAIL_APP_PASSWORD=...
 uv run modal deploy askgeorge/deploy_modal.py
 ```
 
@@ -29,6 +29,9 @@ The app is served at `https://<modal-username>--askgeorge-web.modal.run`.
 
 | Variable | Required | Purpose |
 | --- | --- | --- |
-| `GOOGLE_API_KEY` | yes | Gemini API key (aistudio.google.com) |
-| `PUSHOVER_TOKEN` | no | Pushover app token for notifications |
-| `PUSHOVER_USER` | no | Pushover user key for notifications |
+| `OPENROUTER_API_KEY` | yes | OpenRouter API key (openrouter.ai/keys) |
+| `OPENROUTER_MODEL` | no | Override the chat model (default `google/gemini-3.5-flash`) |
+| `GMAIL_ADDRESS` | no | Gmail address that sends and receives lead notifications |
+| `GMAIL_APP_PASSWORD` | no | Gmail App Password (Google Account → Security → 2-Step Verification → App passwords) |
+
+Without Gmail credentials the app still works — notifications go to the application log instead.
