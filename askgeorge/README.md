@@ -35,3 +35,15 @@ The app is served at `https://<modal-username>--askgeorge-web.modal.run`.
 | `GMAIL_APP_PASSWORD` | no | Gmail App Password (Google Account → Security → 2-Step Verification → App passwords) |
 
 Without Gmail credentials the app still works — notifications go to the application log instead.
+
+## Roadmap
+
+- [ ] **Custom design** — branded Gradio theme with custom CSS/JS: header card (name, links, open-to-work badge), avatar on assistant messages, dark-mode aware styling, footer with contact buttons.
+- [ ] **In-memory Qdrant RAG** — ingest additional background documents, chunk and embed them locally with FastEmbed, retrieve top-k per question via `QdrantClient(":memory:")` while keeping the summary pinned in the prompt.
+- [ ] **Agent framework migration** — port the from-scratch tool-calling loop to the OpenAI Agents SDK (OpenRouter-compatible), keeping the current implementation as a baseline for comparison.
+- [ ] **More tools:**
+  - `get_live_github_projects` — fetch current repos from the GitHub API so project answers never go stale
+  - `analyze_job_fit` — recruiter pastes a job description, agent returns an honest fit assessment against the profile
+  - `send_cv` — share a downloadable resume PDF
+  - `schedule_intro_call` — offer a booking link and email George the context
+  - `search_background` — expose RAG retrieval as a tool the agent invokes on demand
