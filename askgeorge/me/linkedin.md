@@ -84,7 +84,6 @@ Services: Data Engineering (robust data pipelines), Business Intelligence (repor
 
 - **AI Engineer Core Track: LLM Engineering, RAG, QLoRA, Agents** — Udemy (Jul 2026)
 - **Claude 101** — Anthropic (Apr 2026)
-- **Vibe Coding** — Lovable (2026)
 - **Analyze Datasets and Train ML Models using AutoML** — Coursera (May 2022)
 - **AWS Cloud Technical Essentials** — Coursera (Mar 2022)
 - **Sequences, Time Series and Prediction** — Coursera (Apr 2021)
@@ -93,6 +92,7 @@ Services: Data Engineering (robust data pipelines), Business Intelligence (repor
 - **Neural Networks and Deep Learning** — Coursera (Apr 2019)
 - **Data Science, Deep Learning, & Machine Learning with Python** — Udemy (Dec 2017)
 - **Introduction to Water Treatment** — edX Honor Code Certificate
+- **First Aid and CPR Certified** — Red Cross Youth
 
 ## Projects
 
@@ -127,6 +127,16 @@ Agentic AI system that finds underpriced wines in a real online shop:
 - Python automation to join, clean, and transform large datasets beyond Excel's limits; complex formulas and interactive visualisations.
 - Greatly assisted the analytics team exploring energy-storage data. The project was supported by Bill Gates.
 
+### Innovative MedTech Israeli-Based Company — Deep Learning Sound Recognition Model (Feb 2019 - Oct 2019)
+
+- Extracted audio features from sound-waves and built a deep learning model able to recognise sounds from different sources with high accuracy (>97% in most cases).
+- Partnered with the product team to reduce model size and deploy it in a microcontroller unit.
+
+### French National Institute of Gynaecology — Machine Learning on a Biotechnology Data Set (Aug 2018 - Jan 2019)
+
+- Explored possible correlations in a biotechnology clinical dataset about infertile patients having a fertility procedure and found the most significant features using machine learning models.
+- Built a machine learning model, which helped the physician's team accurately predict (>95%) the result of the fertility procedure.
+
 ## Recent Activity (LinkedIn posts)
 
 **On shipping Wine Value Hunter (Jul 2026):** "I have successfully shipped my capstone project, extending it into my own domain: wine. Wine Value Hunter is an agentic AI system designed to find underpriced wines in a real online shop. With just one button press, you can watch it work live: an LLM planner utilizes other agents as tools in an agentic loop; a Llama 3.2 3B model fine-tuned with QLoRA (4-bit, rank-256) on 88K curated wine reviews, served on a Modal GPU; a RAG pipeline grounds a frontier model with similar wines from a ChromaDB vector store; a neural network combined with an ensemble featuring regression-fitted weights (no hand-picked blending); live e-commerce ingestion with structured outputs and a deterministic value-for-money metric; deployed end-to-end on a Modal web app, with the GPU waking only on demand. My own contributions include my own dataset and target metric, a value-ranked scanner over a live shop, regression-learned ensemble weights, and the autonomous LLM planner running in production." (308 impressions)
@@ -141,13 +151,20 @@ Agentic AI system that finds underpriced wines in a real online shop:
 
 - "Comparison of Efficiency between Poly-aluminium Chloride and Aluminium Sulphate Coagulants during Full-scale Experiments in a Drinking Water Treatment Plant." *Separation Science and Technology*, 43: 1507-1519.
 - "Comparable Evaluation of Iron-based Coagulants for the Treatment of Surface Water and of Contaminated Tap Water." *Separation Science and Technology*, 42: 803-817.
-- Plus 2 more peer-reviewed publications in water treatment.
+- "Comparison of single and dual media filtration in a full-scale drinking water treatment plant." *Desalination*, 213: 334-342.
+- "Comparable evaluation of various commercially available aluminium-based coagulants for the treatment of surface water and for the post-treatment of urban wastewater." *Journal of Chemical Technology & Biotechnology*, 80: 1136-1147.
 
-## Skills (62 total — highlights)
+## Skills (62)
 
-Python • Machine Learning • Data Science • Data Analysis (23 endorsements, endorsed by colleagues as highly skilled) • Retrieval-Augmented Generation (RAG) • Large Language Models (LLM) • NLP • LangChain • Google Gemini • Vector Databases • FastAPI • Swift • GraphQL • ETL • Data Pipelines • AWS • Sentry • Grafana • Jira • AI/ML
+**AI & LLM Engineering:** Retrieval-Augmented Generation (RAG) • Large Language Models (LLM) • Natural Language Processing (NLP) • AI/ML • LangChain • Google Gemini • Vector Databases
 
-LinkedIn Skill Assessments passed: **Python**, **Machine Learning**.
+**Data Science & ML:** Python (LinkedIn Skill Assessment passed) • Machine Learning (LinkedIn Skill Assessment passed) • Data Science • Data Analysis (23 endorsements, endorsed as highly skilled by colleagues) • NumPy (9 endorsements) • Pandas (11 endorsements) • Scikit-Learn (11 endorsements) • Data Classification (3) • Regression Analysis (3) • Dimensionality Reduction • PCA (2) • Feature Selection (2) • Data Wrangling (3) • Data Cleaning (4) • Evaluation • Process Validation
+
+**Statistics & Analytics:** Statistics (13 endorsements) • Hypothesis Testing (5) • R (9 endorsements) • SQL (10 endorsements, endorsed as highly skilled) • Tableau (4)
+
+**Engineering & Cloud:** FastAPI • Swift • GraphQL • ETL • Data Pipelines • AWS • Sentry • Grafana • Jira
+
+**Research & Chemistry (earlier career):** Research (6) • Analytical Chemistry (12, endorsed by CERTH colleagues) • Chemistry (11) • Science (10) • R&D (7) • Chemical Engineering (5) • Spectroscopy (4) • ICP (2) • Chromatography (3) • UV/Vis (2) • Laboratory (7) • Laboratory Skills (4) • Laboratory Safety • Quality Control (5) • GLP (3) • Characterization (4) • Materials Science (4) • Water (2) • Water Treatment (4) • Wastewater Treatment (2) • Coagulation • Flocculation • Sustainability (2) • Green Technology • Pollution Prevention
 
 ## Courses
 
