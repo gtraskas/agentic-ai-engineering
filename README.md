@@ -1,10 +1,10 @@
 # Agentic AI Engineering
 
-Projects and exercises from [The Complete Agentic AI Engineering Course](https://www.udemy.com/course/the-complete-agentic-ai-engineering-course) by Ed Donner on Udemy.
+Agentic AI projects and experiments.
 
 ## Setup
 
-This project uses [uv](https://docs.astral.sh/uv/) for dependency management.
+Uses [uv](https://docs.astral.sh/uv/):
 
 ```bash
 uv sync
