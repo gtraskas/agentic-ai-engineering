@@ -333,7 +333,6 @@ def build_demo() -> gr.ChatInterface:
     agent = AskGeorgeAgent(profile=Profile.load(), notifier=EmailNotifier())
     return gr.ChatInterface(
         fn=agent.chat,
-        type="messages",
         title="AskGeorge",
         description=(
             "Hi, I'm George Traskas' AI representative — ask me anything about his "

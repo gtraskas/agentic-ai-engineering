@@ -25,7 +25,7 @@ app = modal.App(APP_NAME)
 image = (
     modal.Image.debian_slim(python_version="3.12")
     .pip_install(
-        "gradio>=5.0",
+        "gradio>=6.0,<7",
         "openai>=1.60",
         "python-dotenv>=1.0",
         "fastapi[standard]>=0.115",
