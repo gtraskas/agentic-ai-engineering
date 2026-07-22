@@ -34,9 +34,10 @@ image = (
         "python-dotenv>=1.0",
         "fastapi[standard]>=0.115",
     )
-    # Bake the embedding model into the image so cold starts skip the download.
+    # Bake both embedding models into the image so cold starts skip downloads.
     .run_commands(
-        f"python -c \"from fastembed import TextEmbedding; TextEmbedding('{EMBEDDING_MODEL}')\""
+        "python -c \"from fastembed import TextEmbedding, SparseTextEmbedding; "
+        f"TextEmbedding('{EMBEDDING_MODEL}'); SparseTextEmbedding('Qdrant/bm25')\""
     )
     .add_local_dir(
         PACKAGE_DIR,

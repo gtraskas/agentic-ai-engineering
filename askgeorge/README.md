@@ -27,7 +27,7 @@ askgeorge/
 - **Two switchable agent backends:** a from-scratch tool-calling loop and the OpenAI Agents SDK (`AGENT_BACKEND=scratch|sdk`)
 - **Input guardrail (SDK backend):** a parallel judge LLM with a Pydantic verdict blocks off-topic, dangerous, and prompt-injection messages before they reach the main agent (`ASKGEORGE_GUARDRAIL=0` to disable)
 - **Rate limiting:** in-memory sliding windows — 15 messages/hour per visitor, 100/day globally — with polite first-person refusals
-- **RAG:** documents chunked and embedded locally with FastEmbed, retrieved per question from `QdrantClient(":memory:")`; the summary stays pinned in the prompt
+- **RAG:** hybrid dense + sparse (BM25) retrieval, embedded locally with FastEmbed and fused in `QdrantClient(":memory:")`; heading-aware chunking; the summary stays pinned in the prompt; a retrieval golden-set eval gates every CI run
 - **UI:** Gradio Blocks with a custom Aegean Minimal theme; drop your photo at `ui/assets/photo.jpg` and resumes at `ui/assets/cv_ai_ml_engineer.pdf` / `ui/assets/cv_data_scientist.pdf` to enable the header portrait and per-role Download CV buttons
 
 ## Run locally

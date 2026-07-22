@@ -15,7 +15,7 @@ from agents import Agent, ModelSettings, OpenAIChatCompletionsModel, Runner, fun
 from agents import set_tracing_disabled
 from agents.exceptions import InputGuardrailTripwireTriggered
 from openai import AsyncOpenAI
-from openai.types.responses import ResponseTextDeltaEvent
+from openai.types.responses import ResponseCreatedEvent, ResponseTextDeltaEvent
 
 from askgeorge.core.config import (
     OPENROUTER_BASE_URL,
@@ -84,9 +84,11 @@ class SdkAgent:
         reply = ""
         try:
             async for event in result.stream_events():
-                if event.type == "raw_response_event" and isinstance(
-                    event.data, ResponseTextDeltaEvent
-                ):
+                if event.type != "raw_response_event":
+                    continue
+                if isinstance(event.data, ResponseCreatedEvent):
+                    reply = ""  # a fresh model turn starts (e.g. after a tool call)
+                elif isinstance(event.data, ResponseTextDeltaEvent):
                     reply += event.data.delta
                     yield reply
         except InputGuardrailTripwireTriggered:

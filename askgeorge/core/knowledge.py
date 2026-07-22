@@ -10,6 +10,7 @@ from askgeorge.core.config import (
     EMBEDDING_MODEL,
     RAG_COLLECTION,
     RAG_TOP_K,
+    SPARSE_EMBEDDING_MODEL,
     rag_enabled,
 )
 from askgeorge.core.profile import Profile
@@ -83,8 +84,9 @@ class BackgroundKnowledge:
 class QdrantKnowledge(BackgroundKnowledge):
     """Retrieves top-k background chunks from an in-memory Qdrant collection.
 
-    Documents are chunked by paragraph, embedded locally with FastEmbed
-    (no API calls), and indexed at startup — nothing is persisted to disk.
+    Hybrid retrieval: dense embeddings (semantic meaning) plus a sparse BM25
+    model (exact terms), fused by Qdrant. Everything runs locally with
+    FastEmbed (no API calls) and is indexed at startup — nothing persists.
     """
 
     def __init__(self, profile: Profile) -> None:
@@ -93,6 +95,7 @@ class QdrantKnowledge(BackgroundKnowledge):
 
         self._client = QdrantClient(":memory:")
         self._client.set_model(EMBEDDING_MODEL)
+        self._client.set_sparse_model(SPARSE_EMBEDDING_MODEL)
         chunks = self._chunk_corpus(profile)
         self._client.add(
             collection_name=RAG_COLLECTION,

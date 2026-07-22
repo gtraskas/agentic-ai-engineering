@@ -44,6 +44,17 @@ jobs:
           print('SDK backend OK:', type(agent).__name__)
           "
 
+      - name: Cache embedding models
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: fastembed-bge-small-bm25-v1
+
+      - name: Retrieval golden-set eval
+        env:
+          PYTHONPATH: .
+        run: uv run python tests/retrieval_eval.py
+
   deploy:
     name: Deploy to Modal
     needs: checks

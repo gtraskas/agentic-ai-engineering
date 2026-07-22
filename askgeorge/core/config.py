@@ -16,8 +16,9 @@ DEFAULT_TEMPERATURE: float = 0.2
 MAX_TOOL_ROUNDS: int = 3
 
 EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
+SPARSE_EMBEDDING_MODEL: str = "Qdrant/bm25"
 RAG_COLLECTION: str = "background"
-RAG_TOP_K: int = 8
+RAG_TOP_K: int = 10
 CHUNK_MAX_CHARS: int = 1_200
 
 SMTP_HOST: str = "smtp.gmail.com"

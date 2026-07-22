@@ -43,10 +43,11 @@ CV_FILES: list[tuple[str, str]] = [
 TECH_CHIPS: list[str] = [
     "Python",
     "OpenAI Agents SDK",
-    "Qdrant RAG",
+    "Hybrid RAG · Qdrant + BM25",
     "FastEmbed",
     "LLM Guardrails",
     "Rate Limiting",
+    "Golden-set Evals",
     "OpenRouter",
     "Gradio",
     "Modal",

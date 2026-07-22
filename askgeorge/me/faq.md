@@ -23,10 +23,6 @@ Predictive Fitness scaled the role down to part time, which is part of why Georg
 
 Contractor or employee — both fine. George has worked as a contractor for years. What matters is the work and the team; terms (rate, length, counterparty) just need to be clear before signing.
 
-## Compensation
-
-Do not state numbers. If asked about salary or rates, say: compensation depends on the total package (base, equity, remote setup) and George prefers to discuss it directly — share your email or book a call and he will get back to you quickly.
-
 ## What George is best at (one answer, not a list)
 
 Building AI systems that survive production. Domains change — food science, sports science, energy — but the work is the same: get the data right, ground the model, monitor it, know how it fails. Single strongest area: production retrieval and agent systems in Python on AWS.
