@@ -13,15 +13,18 @@ from typing import Any, AsyncIterator
 
 from agents import Agent, ModelSettings, OpenAIChatCompletionsModel, Runner, function_tool
 from agents import set_tracing_disabled
+from agents.exceptions import InputGuardrailTripwireTriggered
 from openai import AsyncOpenAI
 from openai.types.responses import ResponseTextDeltaEvent
 
 from askgeorge.core.config import (
     OPENROUTER_BASE_URL,
     chat_model,
+    guardrail_enabled,
     reasoning_extra_body,
     temperature,
 )
+from askgeorge.core.guardrail import GUARDRAIL_REFUSAL, build_scope_guardrail
 from askgeorge.core.knowledge import BackgroundKnowledge
 from askgeorge.core.profile import Profile
 from askgeorge.core.prompts import augment_with_context, build_system_prompt
@@ -48,6 +51,7 @@ class SdkAgent:
             model=chat_model(),
             openai_client=AsyncOpenAI(base_url=OPENROUTER_BASE_URL, api_key=api_key),
         )
+        guardrails = [build_scope_guardrail(model)] if guardrail_enabled() else []
         self._agent = Agent(
             name="AskGeorge",
             instructions=build_system_prompt(profile),
@@ -56,6 +60,7 @@ class SdkAgent:
                 temperature=temperature(), extra_body=reasoning_extra_body()
             ),
             tools=self._build_tools(dispatcher),
+            input_guardrails=guardrails,
         )
 
     async def chat(
@@ -77,12 +82,16 @@ class SdkAgent:
         ]
         result = Runner.run_streamed(self._agent, input=input_items)
         reply = ""
-        async for event in result.stream_events():
-            if event.type == "raw_response_event" and isinstance(
-                event.data, ResponseTextDeltaEvent
-            ):
-                reply += event.data.delta
-                yield reply
+        try:
+            async for event in result.stream_events():
+                if event.type == "raw_response_event" and isinstance(
+                    event.data, ResponseTextDeltaEvent
+                ):
+                    reply += event.data.delta
+                    yield reply
+        except InputGuardrailTripwireTriggered:
+            yield GUARDRAIL_REFUSAL
+            return
         if not reply:
             final = str(result.final_output or "")
             yield final or "Sorry — I could not produce an answer. Please try again."

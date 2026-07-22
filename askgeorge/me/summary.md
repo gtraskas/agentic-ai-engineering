@@ -22,7 +22,7 @@ AI and ML Engineer with 8 years of experience building production-grade data sci
 2. **Wine-VFM** (Jul 2026, live demo on Modal) — autonomous multi-agent wine bargain hunter: QLoRA fine-tuned Llama 3.2 3B on Modal GPU + RAG over ~88K tasting notes + neural network, regression-fitted ensemble, LLM planner with tools.
 3. **MolekitChen** (Jun 2026, live on App Store) — RAG food-science iOS app grounded in peer-reviewed research.
 4. **Predictive Fitness MCP server** (2026, in production) — Python proof-of-concept productionized in TypeScript.
-5. **Causal scoring pipeline** (2022-2026, in production at Predictive Fitness).
+5. **Causal scoring pipeline** (2026, in production at Predictive Fitness).
 
 ## Experience Highlights
 

@@ -25,6 +25,8 @@ askgeorge/
 
 - **LLM:** any model via [OpenRouter](https://openrouter.ai) — default `google/gemini-3.1-flash-lite` with reasoning effort capped at `low` for fast first tokens; switch anytime with `OPENROUTER_MODEL` / `ASKGEORGE_REASONING`
 - **Two switchable agent backends:** a from-scratch tool-calling loop and the OpenAI Agents SDK (`AGENT_BACKEND=scratch|sdk`)
+- **Input guardrail (SDK backend):** a parallel judge LLM with a Pydantic verdict blocks off-topic, dangerous, and prompt-injection messages before they reach the main agent (`ASKGEORGE_GUARDRAIL=0` to disable)
+- **Rate limiting:** in-memory sliding windows — 15 messages/hour per visitor, 100/day globally — with polite first-person refusals
 - **RAG:** documents chunked and embedded locally with FastEmbed, retrieved per question from `QdrantClient(":memory:")`; the summary stays pinned in the prompt
 - **UI:** Gradio Blocks with a custom Aegean Minimal theme; drop your photo at `ui/assets/photo.jpg` and resumes at `ui/assets/cv_ai_ml_engineer.pdf` / `ui/assets/cv_data_scientist.pdf` to enable the header portrait and per-role Download CV buttons
 
@@ -59,6 +61,8 @@ Every push runs lint + smoke tests via GitHub Actions; pushes to `master` auto-d
 | `ASKGEORGE_REASONING` | no | Reasoning effort for thinking models (default `low`; e.g. `medium`, `high`) |
 | `AGENT_BACKEND` | no | `sdk` (default, OpenAI Agents SDK) or `scratch` (from-scratch loop) |
 | `ASKGEORGE_RAG` | no | Set `0` to disable RAG and pass the full corpus in context |
+| `ASKGEORGE_GUARDRAIL` | no | Set `0` to disable the input guardrail (on by default) |
+| `ASKGEORGE_TEMPERATURE` | no | Sampling temperature (default `0.2`) |
 | `GMAIL_ADDRESS` | no | Gmail address that sends and receives notifications |
 | `GMAIL_APP_PASSWORD` | no | Gmail App Password (Google Account → Security → 2-Step Verification → App passwords) |
 | `CALENDAR_BOOKING_URL` | no | Google Calendar booking-page link; enables the embedded booking calendar |

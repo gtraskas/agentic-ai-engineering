@@ -60,6 +60,11 @@ def rag_enabled() -> bool:
     return os.getenv("ASKGEORGE_RAG", "1") != "0"
 
 
+def guardrail_enabled() -> bool:
+    """Return True unless the input guardrail is disabled with ASKGEORGE_GUARDRAIL=0."""
+    return os.getenv("ASKGEORGE_GUARDRAIL", "1") != "0"
+
+
 def booking_url() -> str | None:
     """Return the Google Calendar booking-page URL, if configured."""
     return os.getenv("CALENDAR_BOOKING_URL")

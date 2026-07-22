@@ -7,6 +7,7 @@ professional portfolio look. Inter for text, JetBrains Mono for code.
 from __future__ import annotations
 
 import base64
+import inspect
 import logging
 from pathlib import Path
 from typing import Any, Callable
@@ -14,6 +15,7 @@ from typing import Any, Callable
 import gradio as gr
 
 from askgeorge.core.config import ASSETS_DIR, booking_url
+from askgeorge.core.ratelimit import RateLimiter
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +28,11 @@ CALENDAR_HEIGHT: int = 620
 REPO_URL: str = "https://github.com/gtraskas/agentic-ai-engineering"
 
 PROJECT_LINKS: list[tuple[str, str]] = [
-    ("🍳 MolekitChen — App Store", "https://apps.apple.com/us/app/molekitchen/id6773031788"),
-    ("🌐 MolekitChen — site", "https://molekitchen-landing.pages.dev"),
-    ("🍷 Wine-VFM — live demo", "https://gtraskas--wine-vfm-app-web.modal.run"),
-    ("⚙️ Wine-VFM — code", "https://github.com/gtraskas/wine-vfm"),
-    ("🤖 AskGeorge — code", REPO_URL),
+    ("MolekitChen · App Store", "https://apps.apple.com/us/app/molekitchen/id6773031788"),
+    ("MolekitChen · site", "https://molekitchen-landing.pages.dev"),
+    ("Wine-VFM · live demo", "https://gtraskas--wine-vfm-app-web.modal.run"),
+    ("Wine-VFM · code", "https://github.com/gtraskas/wine-vfm"),
+    ("AskGeorge · code", REPO_URL),
 ]
 
 CV_FILES: list[tuple[str, str]] = [
@@ -43,6 +45,8 @@ TECH_CHIPS: list[str] = [
     "OpenAI Agents SDK",
     "Qdrant RAG",
     "FastEmbed",
+    "LLM Guardrails",
+    "Rate Limiting",
     "OpenRouter",
     "Gradio",
     "Modal",
@@ -58,23 +62,26 @@ AEGEAN_CSS: str = f"""
 #ag-header {{
     display: flex;
     align-items: center;
-    gap: 20px;
-    padding: 22px 26px;
-    background: linear-gradient(135deg, #FFFFFF 0%, #F0F9FF 100%);
-    border: 1px solid #E2E8F0;
-    border-radius: 16px;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    gap: 24px;
+    padding: 26px 30px;
+    background: linear-gradient(160deg, #FFFFFF 0%, #F8FAFC 70%, #F0F9FF 100%);
+    border: 1px solid #E8EDF3;
+    border-radius: 18px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.04);
 }}
 #ag-header img.ag-photo {{
-    width: 84px;
-    height: 84px;
+    width: 92px;
+    height: 92px;
     border-radius: 50%;
     object-fit: cover;
-    border: 3px solid {ACCENT};
+    border: 2px solid #FFFFFF;
+    outline: 2px solid {ACCENT};
+    outline-offset: 2px;
 }}
 #ag-header .ag-name {{
-    font-size: 1.45rem;
+    font-size: 1.6rem;
     font-weight: 700;
+    letter-spacing: -0.02em;
     color: {INK};
     margin: 0;
 }}
@@ -114,17 +121,28 @@ AEGEAN_CSS: str = f"""
     display: inline-block;
     font-size: 0.78rem;
     font-weight: 600;
-    color: {INK};
+    letter-spacing: 0.01em;
+    color: #334155;
     background: #FFFFFF;
     border: 1px solid #E2E8F0;
-    border-radius: 999px;
-    padding: 3px 12px;
+    border-radius: 8px;
+    padding: 4px 12px;
     margin: 2px 6px 2px 0;
     text-decoration: none;
+    transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }}
 #ag-header a.ag-chip:hover {{
     border-color: {ACCENT};
     color: {ACCENT};
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.15);
+}}
+.ag-label {{
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: #64748B;
+    margin: 0 0 12px 0;
 }}
 #ag-subtitle {{
     text-align: center;
@@ -198,11 +216,8 @@ AEGEAN_CSS: str = f"""
     padding: 18px 22px;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }}
-#ag-book .ag-book-title {{
-    font-size: 1.05rem;
-    font-weight: 700;
-    color: {INK};
-    margin: 0 0 12px 0;
+#ag-book {{
+    border-radius: 18px;
 }}
 #ag-book iframe {{
     width: 100%;
@@ -323,7 +338,7 @@ def _booking_html(url: str) -> str:
     """Build the embedded Google Calendar booking section."""
     return f"""
     <div id="ag-book">
-        <p class="ag-book-title">📅 Book an intro call</p>
+        <p class="ag-label">Book an intro call</p>
         <iframe src="{_booking_embed_src(url)}" title="Book an intro call with George"></iframe>
     </div>
     """
@@ -334,14 +349,49 @@ def _stack_html() -> str:
     chips = "".join(f'<span class="ag-tech">{chip}</span>' for chip in TECH_CHIPS)
     return f"""
     <div id="ag-stack">
+        <p class="ag-label">Under the hood</p>
         <div class="ag-stack-line">
-            This assistant is itself one of George's projects — an
+            This assistant is itself one of my projects — an
             <a href="{REPO_URL}" target="_blank" rel="noopener">open-source</a>
             production agentic AI system.
         </div>
         {chips}
     </div>
     """
+
+
+def _visitor_ip(request: gr.Request | None) -> str:
+    """Best-effort visitor identifier: forwarded header first, else socket IP."""
+    if request is None:
+        return "unknown"
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+def _rate_limited(chat_fn: Callable[..., Any], limiter: RateLimiter) -> Callable[..., Any]:
+    """Wrap the chat function so every message passes the rate limiter first."""
+    if inspect.isasyncgenfunction(chat_fn):
+
+        async def async_wrapper(message: str, history: list, request: gr.Request):
+            refusal = limiter.check(_visitor_ip(request))
+            if refusal:
+                yield refusal
+                return
+            async for partial in chat_fn(message, history):
+                yield partial
+
+        return async_wrapper
+
+    def sync_wrapper(message: str, history: list, request: gr.Request):
+        refusal = limiter.check(_visitor_ip(request))
+        if refusal:
+            yield refusal
+            return
+        yield from chat_fn(message, history)
+
+    return sync_wrapper
 
 
 def build_ui(chat_fn: Callable[..., Any]) -> gr.Blocks:
@@ -354,6 +404,7 @@ def build_ui(chat_fn: Callable[..., Any]) -> gr.Blocks:
     Returns:
         A :class:`gr.Blocks` page; serve it with :func:`serve_kwargs` applied.
     """
+    chat_fn = _rate_limited(chat_fn, RateLimiter())
     available_cvs = [
         (label, ASSETS_DIR / filename)
         for label, filename in CV_FILES
