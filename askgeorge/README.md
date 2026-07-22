@@ -1,5 +1,7 @@
 # AskGeorge
 
+**Live:** https://gtraskas--askgeorge-web.modal.run
+
 An AI representative for Georgios Traskas. It answers questions from recruiters and hiring managers in first person, with streaming replies, grounded strictly in George's professional background. Unknown questions, contact requests, and call bookings are emailed straight to George via Gmail SMTP — nothing is stored on the server's ephemeral disk.
 
 ## Architecture
@@ -51,7 +53,7 @@ uv run modal secret create askgeorge-secret \
 uv run modal deploy askgeorge/deploy_modal.py
 ```
 
-The app is served at `https://<modal-username>--askgeorge-web.modal.run`.
+The app is served at https://gtraskas--askgeorge-web.modal.run.
 
 ### CI/CD
 
