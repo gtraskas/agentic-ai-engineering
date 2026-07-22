@@ -7,12 +7,15 @@ professional portfolio look. Inter for text, JetBrains Mono for code.
 from __future__ import annotations
 
 import base64
+import logging
 from pathlib import Path
 from typing import Any, Callable
 
 import gradio as gr
 
 from askgeorge.core.config import ASSETS_DIR, booking_url
+
+logger = logging.getLogger(__name__)
 
 ACCENT: str = "#0EA5E9"
 INK: str = "#0F172A"
@@ -123,21 +126,30 @@ AEGEAN_CSS: str = f"""
     border-color: {ACCENT};
     color: {ACCENT};
 }}
-/* One uniform chat box: hide label, strip per-message backgrounds */
+#ag-subtitle {{
+    text-align: center;
+    font-size: 0.95rem;
+    color: #475569;
+    padding: 2px 0 6px 0;
+}}
+/* One uniform chat box: hide label, strip per-message chrome (selectors
+   verified against Gradio 6's rendered DOM: .message-row.panel.user-row/.bot-row) */
 #ag-chat .label-wrap, #ag-chat label {{
     display: none !important;
 }}
 #ag-chat {{
     background: #FFFFFF;
 }}
-#ag-chat .message-row {{
+#ag-chat .message-row.panel {{
     background: transparent !important;
     border: none !important;
-    margin: 2px 0;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 8px 12px !important;
 }}
-#ag-chat .message-row .user,
-#ag-chat .message-row .bot,
-#ag-chat .message {{
+#ag-chat .message-row.panel .flex-wrap,
+#ag-chat .message-row.panel .role,
+#ag-chat .message-row .message {{
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
@@ -146,23 +158,38 @@ AEGEAN_CSS: str = f"""
 #ag-chat .user-row {{
     justify-content: flex-start !important;
 }}
-#ag-chat .user-row .message-content,
-#ag-chat .user-row .message {{
+#ag-chat .user-row > * {{
     border-left: 3px solid {ACCENT} !important;
-    padding-left: 10px !important;
-    color: #334155;
+    padding-left: 12px !important;
 }}
-/* Example questions pinned to the bottom of the empty chat box */
+#ag-chat .user-row * {{
+    color: #334155 !important;
+    font-weight: 600;
+}}
+/* Example questions: chip-styled, pinned to the bottom of the empty chat.
+   panel-wrap needs full height or placeholder-content's 100% resolves to 0. */
+#ag-chat .panel-wrap {{
+    height: 100% !important;
+}}
 #ag-chat .placeholder-content {{
-    display: flex;
-    flex-direction: column;
-    height: 100%;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: flex-end !important;
+    height: 100% !important;
 }}
 #ag-chat .examples {{
-    margin-top: auto;
-    justify-content: center;
+    justify-content: center !important;
     gap: 8px;
-    padding-bottom: 8px;
+    padding-bottom: 10px;
+}}
+#ag-chat .example {{
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 999px;
+    padding: 6px 14px;
+}}
+#ag-chat .example:hover {{
+    border-color: {ACCENT};
 }}
 #ag-book {{
     background: #FFFFFF;
@@ -264,18 +291,40 @@ def _header_html() -> str:
     """
 
 
-def _booking_html(url: str) -> str:
-    """Build the embedded Google Calendar booking section.
+def _booking_embed_src(url: str) -> str:
+    """Return an embeddable form of a Google Calendar booking link.
 
-    Google's own embed snippet appends ``gv=true`` to the booking-page link;
-    without it the page refuses to render inside an iframe.
+    Short share links (calendar.app.google/...) redirect to a long URL that
+    Google blocks inside iframes (X-Frame-Options: SAMEORIGIN). The embeddable
+    form — verified against Google's response headers — is
+    ``calendar.google.com/calendar/appointments/schedules/<id>?gv=true``, so
+    short links are resolved once at startup and rewritten to it.
     """
-    separator = "&" if "?" in url else "?"
-    embed_src = url if "gv=true" in url else f"{url}{separator}gv=true"
+    resolved = url
+    if "calendar.app.google" in url:
+        try:
+            import httpx
+
+            response = httpx.head(url, follow_redirects=False, timeout=10)
+            location = response.headers.get("location", "")
+            if "/appointments/schedules/" in location:
+                schedule_id = location.rsplit("/", 1)[-1]
+                resolved = (
+                    "https://calendar.google.com/calendar/appointments/"
+                    f"schedules/{schedule_id}"
+                )
+        except httpx.HTTPError as exc:
+            logger.warning("Could not resolve booking short link: %s", exc)
+    separator = "&" if "?" in resolved else "?"
+    return resolved if "gv=true" in resolved else f"{resolved}{separator}gv=true"
+
+
+def _booking_html(url: str) -> str:
+    """Build the embedded Google Calendar booking section."""
     return f"""
     <div id="ag-book">
         <p class="ag-book-title">📅 Book an intro call</p>
-        <iframe src="{embed_src}" title="Book an intro call with George"></iframe>
+        <iframe src="{_booking_embed_src(url)}" title="Book an intro call with George"></iframe>
     </div>
     """
 
@@ -316,13 +365,16 @@ def build_ui(chat_fn: Callable[..., Any]) -> gr.Blocks:
             with gr.Row():
                 for label, path in available_cvs:
                     gr.DownloadButton(label, value=str(path), size="sm")
+        gr.HTML(
+            '<div id="ag-subtitle">Ask me anything about George\'s experience, '
+            "projects, and skills.</div>"
+        )
         gr.ChatInterface(
             fn=chat_fn,
             chatbot=gr.Chatbot(
                 layout="panel",
                 show_label=False,
                 height=CHAT_HEIGHT,
-                placeholder="Ask me anything about George's experience, projects, and skills.",
                 elem_id="ag-chat",
             ),
             examples=[
