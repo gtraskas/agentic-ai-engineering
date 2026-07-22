@@ -62,14 +62,20 @@ IUI fertility outcome prediction, 1,633 patients, 84 variables, 8.5% positive cl
 
 Automated multi-format ingestion (CSV/DTF/TXT) with auto-detection into aligned time series; rule-based injection/flowback event detection; smart downsampling (~90% size reduction on quiet periods, full resolution near events). Eliminated a daily manual bottleneck for the analytics team.
 
+## AskGeorge — This AI Representative (Jul 2026, live)
+
+The assistant answering right now is itself one of George's projects: a production agentic AI system, open source at github.com/gtraskas/agentic-ai-engineering.
+
+- Two switchable agent backends: a from-scratch streaming tool-calling loop and the OpenAI Agents SDK.
+- In-memory Qdrant RAG with local FastEmbed embeddings over George's background documents.
+- LLM-agnostic via OpenRouter; tools email George in real time (leads, unanswered questions, call bookings).
+- Gradio UI with custom theme and embedded booking calendar; serverless on Modal (scales to zero); GitHub Actions CI/CD with auto-deploy.
+
 ## Other Public GitHub Projects (github.com/gtraskas)
 
-- **guardrail-api** — AI hallucination guardrail audit suite (portfolio project).
-- **drug-discovery** — Drug discovery ML: SMILES, ADMET modeling, GNNs, AlphaFold, federated learning.
-- **llm-portfolio** — Practical LLM projects: competitive intelligence analysis, multi-agent systems, RAG applications, autonomous AI solutions (Ollama, OpenAI).
-- **knowledge-rag** — Domain-specific RAG knowledge base with conversational interface and source citations.
-- **causal-trial-conversion-xdot** — Causal inference notebooks for trial conversion.
-- **fake-news-detector** — Web app backed by a deployed SageMaker model.
-- **post-race-analyzer** — Cycling race analysis: CdA optimization, weather and power models, race-plan simulation.
-- **swim-analysis**, **power-curve-modeling** — sports-science analytics.
-- **spamIt**, **titanic_prediction**, **breast_cancer_prediction**, **deep-learning-ai** — earlier ML fundamentals work.
+- **llm-portfolio** (2026) — Practical LLM projects: competitive intelligence analysis, multi-agent systems, RAG applications, autonomous AI solutions (Ollama, OpenAI).
+- **guardrail-api** (2026) — AI hallucination guardrail audit suite (portfolio project).
+- **knowledge-rag** (2025) — Domain-specific RAG knowledge base with conversational interface and source citations.
+- **pdf-data-extractor** (2025) — Automated PDF data extraction tooling.
+- **fake-news-detector** (2025) — Web app backed by a deployed SageMaker model.
+- **spamIt**, **titanic_prediction**, **breast_cancer_prediction**, **autoML** — earlier ML fundamentals work.

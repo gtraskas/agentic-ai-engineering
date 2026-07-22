@@ -16,6 +16,14 @@ AI and ML Engineer with 8 years of experience building production-grade data sci
 - **Languages:** Python, TypeScript, SQL, R
 - **Analytics:** Statistical modeling, hypothesis testing, cohort analysis, causal inference (Pearl, do-calculus, Double Machine Learning)
 
+## Project timeline (most recent first — authoritative for "latest project" questions)
+
+1. **AskGeorge** (Jul 2026, live) — this very assistant: agentic AI app with dual backends (from-scratch loop + OpenAI Agents SDK), in-memory Qdrant RAG, streaming Gradio UI, Modal serverless deployment, GitHub Actions CI/CD.
+2. **Wine-VFM** (Jul 2026, live demo on Modal) — autonomous multi-agent wine bargain hunter: QLoRA fine-tuned Llama 3.2 3B on Modal GPU + RAG over ~88K tasting notes + neural network, regression-fitted ensemble, LLM planner with tools.
+3. **MolekitChen** (Jun 2026, live on App Store) — RAG food-science iOS app grounded in peer-reviewed research.
+4. **Predictive Fitness MCP server** (2026, in production) — Python proof-of-concept productionized in TypeScript.
+5. **Causal scoring pipeline** (2022-2026, in production at Predictive Fitness).
+
 ## Experience Highlights
 
 **Predictive Fitness, Inc. — Data Scientist & ML Engineer** (May 2022 - Present, part-time since May 2026, remote)

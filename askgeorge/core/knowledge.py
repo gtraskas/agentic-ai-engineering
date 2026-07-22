@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 
 from askgeorge.core.config import (
     CHUNK_MAX_CHARS,
@@ -14,6 +15,53 @@ from askgeorge.core.config import (
 from askgeorge.core.profile import Profile
 
 logger = logging.getLogger(__name__)
+
+_HEADING_PATTERN = re.compile(r"^(#{1,4})\s+(.+)$")
+
+
+def _split_markdown_sections(content: str) -> list[tuple[str, str]]:
+    """Split markdown into (heading path, section body) pairs.
+
+    The heading path joins the active headings at each level, e.g.
+    "Experience > Predictive Fitness", so every chunk keeps its context.
+    """
+    sections: list[tuple[str, str]] = []
+    active_headings: dict[int, str] = {}
+    body_lines: list[str] = []
+    current_path = ""
+
+    def _flush(path: str, lines: list[str]) -> None:
+        text = "\n".join(lines).strip()
+        if text:
+            sections.append((path, text))
+
+    for line in content.splitlines():
+        match = _HEADING_PATTERN.match(line)
+        if match is None:
+            body_lines.append(line)
+            continue
+        _flush(current_path, body_lines)
+        body_lines = []
+        level = len(match.group(1))
+        active_headings = {lvl: t for lvl, t in active_headings.items() if lvl < level}
+        active_headings[level] = match.group(2).strip()
+        current_path = " > ".join(active_headings[lvl] for lvl in sorted(active_headings))
+    _flush(current_path, body_lines)
+    return sections
+
+
+def _bound_paragraphs(section: str, max_chars: int = CHUNK_MAX_CHARS) -> list[str]:
+    """Pack a section's paragraphs into pieces no longer than ``max_chars``."""
+    pieces: list[str] = []
+    current = ""
+    for paragraph in section.split("\n\n"):
+        if current and len(current) + len(paragraph) > max_chars:
+            pieces.append(current.strip())
+            current = ""
+        current += paragraph + "\n\n"
+    if current.strip():
+        pieces.append(current.strip())
+    return pieces
 
 
 class BackgroundKnowledge:
@@ -65,17 +113,17 @@ class QdrantKnowledge(BackgroundKnowledge):
 
     @staticmethod
     def _chunk_corpus(profile: Profile) -> list[tuple[str, str]]:
-        """Split every document into paragraph-aligned chunks of bounded size."""
+        """Split documents into heading-aware chunks of bounded size.
+
+        Each chunk is prefixed with its markdown heading path so retrieval
+        matches on section context, not just body text.
+        """
         chunks: list[tuple[str, str]] = []
         for source, content in profile.documents.items():
-            current = ""
-            for paragraph in content.split("\n\n"):
-                if current and len(current) + len(paragraph) > CHUNK_MAX_CHARS:
-                    chunks.append((source, current.strip()))
-                    current = ""
-                current += paragraph + "\n\n"
-            if current.strip():
-                chunks.append((source, current.strip()))
+            for heading_path, section in _split_markdown_sections(content):
+                prefix = f"[{heading_path}]\n" if heading_path else ""
+                for piece in _bound_paragraphs(section):
+                    chunks.append((source, f"{prefix}{piece}"))
         return chunks
 
 
