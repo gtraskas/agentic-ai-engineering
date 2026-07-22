@@ -123,18 +123,46 @@ AEGEAN_CSS: str = f"""
     border-color: {ACCENT};
     color: {ACCENT};
 }}
-/* Flat panel chat: hide label, soften the frame */
+/* One uniform chat box: hide label, strip per-message backgrounds */
 #ag-chat .label-wrap, #ag-chat label {{
     display: none !important;
 }}
-#ag-chat .panel {{
+#ag-chat {{
     background: #FFFFFF;
 }}
-/* Example questions: neat row at the bottom of the chat box */
+#ag-chat .message-row {{
+    background: transparent !important;
+    border: none !important;
+    margin: 2px 0;
+}}
+#ag-chat .message-row .user,
+#ag-chat .message-row .bot,
+#ag-chat .message {{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}}
+/* Same side, same box for both roles; a slim accent bar marks the visitor */
+#ag-chat .user-row {{
+    justify-content: flex-start !important;
+}}
+#ag-chat .user-row .message-content,
+#ag-chat .user-row .message {{
+    border-left: 3px solid {ACCENT} !important;
+    padding-left: 10px !important;
+    color: #334155;
+}}
+/* Example questions pinned to the bottom of the empty chat box */
+#ag-chat .placeholder-content {{
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}}
 #ag-chat .examples {{
+    margin-top: auto;
     justify-content: center;
     gap: 8px;
-    padding-top: 4px;
+    padding-bottom: 8px;
 }}
 #ag-book {{
     background: #FFFFFF;
@@ -147,11 +175,6 @@ AEGEAN_CSS: str = f"""
     font-size: 1.05rem;
     font-weight: 700;
     color: {INK};
-    margin: 0 0 4px 0;
-}}
-#ag-book .ag-book-sub {{
-    font-size: 0.85rem;
-    color: #475569;
     margin: 0 0 12px 0;
 }}
 #ag-book iframe {{
@@ -242,12 +265,16 @@ def _header_html() -> str:
 
 
 def _booking_html(url: str) -> str:
-    """Build the embedded Google Calendar booking section."""
-    embed_src = url if "?" in url else f"{url}?gv=true"
+    """Build the embedded Google Calendar booking section.
+
+    Google's own embed snippet appends ``gv=true`` to the booking-page link;
+    without it the page refuses to render inside an iframe.
+    """
+    separator = "&" if "?" in url else "?"
+    embed_src = url if "gv=true" in url else f"{url}{separator}gv=true"
     return f"""
     <div id="ag-book">
         <p class="ag-book-title">📅 Book an intro call</p>
-        <p class="ag-book-sub">Weekday evenings, Athens time — slots shown in your timezone.</p>
         <iframe src="{embed_src}" title="Book an intro call with George"></iframe>
     </div>
     """
