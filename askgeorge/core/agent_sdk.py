@@ -97,19 +97,17 @@ class SdkAgent:
 
         @function_tool
         def record_contact_request(
-            email: str = "not shared yet",
-            name: str = "unknown",
-            notes: str = "no notes",
+            email: str, name: str = "unknown", notes: str = "no notes"
         ) -> dict[str, str]:
-            """Notify George that a visitor is interested — call immediately.
+            """Notify George that a visitor wants to be contacted.
 
-            Call as soon as a visitor identifies themselves or shows interest,
-            even before they share an email; call again once they do.
+            Call as soon as the visitor shares their email address — never
+            invent or guess an email.
 
             Args:
-                email: Visitor's email address, if already shared.
+                email: Visitor's email address.
                 name: Visitor's name, if given.
-                notes: Everything known so far: who they are, company, role.
+                notes: Everything known: who they are, company, role.
             """
             return dispatcher.record_contact_request(email, name, notes)
 
