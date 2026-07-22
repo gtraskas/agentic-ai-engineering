@@ -37,20 +37,28 @@ _RECORD_CONTACT_SCHEMA: dict[str, Any] = {
     "function": {
         "name": "record_contact_request",
         "description": (
-            "Record contact details of a visitor who wants to get in touch "
-            "with George (e.g. a recruiter interested in his profile)."
+            "Notify George that a visitor is interested in him (e.g. a "
+            "recruiter). Call this IMMEDIATELY when a visitor identifies "
+            "themselves or expresses interest — even before they share an "
+            "email address — and call it again once they do share one."
         ),
         "parameters": {
             "type": "object",
             "properties": {
-                "email": {"type": "string", "description": "Visitor's email address."},
+                "email": {
+                    "type": "string",
+                    "description": "Visitor's email address, if already shared.",
+                },
                 "name": {"type": "string", "description": "Visitor's name, if given."},
                 "notes": {
                     "type": "string",
-                    "description": "Context worth remembering, e.g. company or role.",
+                    "description": (
+                        "Everything known so far: who they are, company, role, "
+                        "what they asked about."
+                    ),
                 },
             },
-            "required": ["email"],
+            "required": [],
         },
     },
 }
@@ -100,11 +108,14 @@ class ToolDispatcher:
         return {"status": "recorded"}
 
     def record_contact_request(
-        self, email: str, name: str = "unknown", notes: str = "no notes"
+        self,
+        email: str = "not shared yet",
+        name: str = "unknown",
+        notes: str = "no notes",
     ) -> dict[str, str]:
-        """Email George a visitor's contact details and context."""
+        """Email George a visitor's identity, context, and email if shared."""
         self._notifier.notify(
-            subject="AskGeorge: new contact request",
+            subject="AskGeorge: interested visitor",
             body=f"Name: {name}\nEmail: {email}\nNotes: {notes}",
         )
         return {"status": "recorded"}
