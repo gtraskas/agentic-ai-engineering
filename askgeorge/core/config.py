@@ -12,7 +12,7 @@ ASSETS_DIR: Path = PACKAGE_DIR / "ui" / "assets"
 OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 DEFAULT_CHAT_MODEL: str = "google/gemini-3.1-flash-lite"
 DEFAULT_REASONING_EFFORT: str = "low"
-DEFAULT_TEMPERATURE: float = 0.2
+DEFAULT_TEMPERATURE: float = 0.7
 MAX_TOOL_ROUNDS: int = 3
 
 EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"

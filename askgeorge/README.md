@@ -11,16 +11,21 @@ askgeorge/
 ├── core/
 │   ├── config.py           # paths, models, env accessors
 │   ├── profile.py          # background corpus loading
-│   ├── knowledge.py        # in-memory Qdrant RAG (FastEmbed, local embeddings)
+│   ├── knowledge.py        # hybrid BM25+dense RAG in Qdrant (:memory:), FastEmbed
 │   ├── prompts.py          # system prompt + per-question context injection
+│   ├── guardrail.py        # parallel scope judge (Pydantic verdict, tripwire)
+│   ├── ratelimit.py        # sliding-window rate limits (per-IP hourly, global daily)
 │   ├── tools.py            # tool schemas + shared dispatcher
 │   ├── notifier.py         # Gmail SMTP notifications
 │   ├── agent_scratch.py    # hand-rolled streaming tool-calling loop
-│   └── agent_sdk.py        # OpenAI Agents SDK backend
+│   └── agent_sdk.py        # OpenAI Agents SDK backend (default)
 ├── ui/
-│   ├── theme.py            # Aegean Minimal theme, CSS, layout
-│   └── assets/             # photo.jpg, cv.pdf (optional)
+│   ├── theme.py            # Refined Aegean theme, CSS, layout, rate-limit wrapper
+│   └── assets/             # photo.jpg, CV PDFs
 └── me/                     # knowledge base (markdown)
+
+tests/
+└── retrieval_eval.py       # golden-set retrieval eval, gates every CI run
 ```
 
 - **LLM:** any model via [OpenRouter](https://openrouter.ai) — default `google/gemini-3.1-flash-lite` with reasoning effort capped at `low` for fast first tokens; switch anytime with `OPENROUTER_MODEL` / `ASKGEORGE_REASONING`
@@ -62,7 +67,7 @@ Every push runs lint + smoke tests via GitHub Actions; pushes to `master` auto-d
 | `AGENT_BACKEND` | no | `sdk` (default, OpenAI Agents SDK) or `scratch` (from-scratch loop) |
 | `ASKGEORGE_RAG` | no | Set `0` to disable RAG and pass the full corpus in context |
 | `ASKGEORGE_GUARDRAIL` | no | Set `0` to disable the input guardrail (on by default) |
-| `ASKGEORGE_TEMPERATURE` | no | Sampling temperature (default `0.2`) |
+| `ASKGEORGE_TEMPERATURE` | no | Sampling temperature (default `0.7`) |
 | `GMAIL_ADDRESS` | no | Gmail address that sends and receives notifications |
 | `GMAIL_APP_PASSWORD` | no | Gmail App Password (Google Account → Security → 2-Step Verification → App passwords) |
 | `CALENDAR_BOOKING_URL` | no | Google Calendar booking-page link; enables the embedded booking calendar |

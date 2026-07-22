@@ -112,7 +112,7 @@ The assistant answering right now is itself one of George's projects: a producti
 - **Two agent backends on purpose:** the from-scratch streaming tool-calling loop shows exactly what a framework abstracts (delta assembly, tool rounds, safety caps); the OpenAI Agents SDK version delivers the same behavior in a tenth of the code. Same philosophy as Wine-VFM's two planners — build the baseline, then let the abstraction earn its place.
 - **Guardrail as a parallel judge:** the scope check runs concurrently with answer generation, so legitimate visitors pay no latency; the tripwire cancels generation only when the judge rejects. Reasoning-first field order in the verdict schema improves judgment quality.
 - **Grounding over memory:** the model answers only from retrieved background documents; conversation memory is the browser's chat history replayed each turn — the correct stateless pattern for serverless, immune to container restarts.
-- **Low temperature (0.2):** grounded factual answers should be consistent between visitors; creativity is not a feature here.
+- **Moderate temperature (0.7):** factual reliability comes from grounding rules and retrieval, not from freezing the sampler — a moderate temperature keeps answers natural and varied without touching the facts.
 
 ## Other Public GitHub Projects (github.com/gtraskas)
 
