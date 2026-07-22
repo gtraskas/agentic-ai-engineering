@@ -74,12 +74,66 @@ AEGEAN_CSS: str = f"""
 #ag-header a.ag-link:hover {{
     text-decoration: underline;
 }}
+#ag-header .ag-projects {{
+    margin-top: 8px;
+}}
+#ag-header a.ag-chip {{
+    display: inline-block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: {INK};
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 999px;
+    padding: 3px 12px;
+    margin: 2px 6px 2px 0;
+    text-decoration: none;
+}}
+#ag-header a.ag-chip:hover {{
+    border-color: {ACCENT};
+    color: {ACCENT};
+}}
+#ag-about {{
+    font-size: 0.85rem;
+    color: #475569;
+}}
 #ag-footer {{
     text-align: center;
     font-size: 0.8rem;
     color: #94A3B8;
     padding-top: 6px;
 }}
+"""
+
+PROJECT_LINKS: list[tuple[str, str]] = [
+    ("🍳 MolekitChen — App Store", "https://apps.apple.com/us/app/molekitchen/id6773031788"),
+    ("🌐 MolekitChen — site", "https://molekitchen-landing.pages.dev"),
+    ("🍷 Wine-VFM — live demo", "https://gtraskas--wine-vfm-app-web.modal.run"),
+    ("⚙️ Wine-VFM — code", "https://github.com/gtraskas/wine-vfm"),
+    ("🤖 AskGeorge — code", "https://github.com/gtraskas/agentic-ai-engineering"),
+]
+
+CV_FILES: list[tuple[str, str]] = [
+    ("Download CV — AI/ML Engineer", "cv_ai_ml_engineer.pdf"),
+    ("Download CV — Data Scientist", "cv_data_scientist.pdf"),
+]
+
+ABOUT_MARKDOWN: str = """
+**How this app is built** — AskGeorge is itself one of George's projects: a
+production agentic AI system, open source on
+[GitHub](https://github.com/gtraskas/agentic-ai-engineering).
+
+- **Python** with OOP architecture, dependencies managed by **uv**
+- **Two switchable agent backends**: a from-scratch streaming tool-calling loop
+  and the **OpenAI Agents SDK**
+- **RAG**: background documents chunked and embedded locally with **FastEmbed**,
+  retrieved per question from an in-memory **Qdrant** vector store
+- **LLM-agnostic** via **OpenRouter** (one env var swaps the model)
+- **Tools**: unanswered questions, contact requests, and call bookings are
+  emailed to George in real time (Gmail SMTP — nothing stored server-side)
+- **UI**: **Gradio 6** with a custom theme, token-by-token streaming
+- **Serverless deployment** on **Modal** (CPU container, scales to zero) with
+  **GitHub Actions CI/CD** — lint, smoke tests, auto-deploy on every push
 """
 
 
@@ -110,9 +164,13 @@ def _photo_data_uri(assets_dir: Path = ASSETS_DIR) -> str | None:
 
 
 def _header_html() -> str:
-    """Build the header card: photo, name, headline, badge, and links."""
+    """Build the header card: photo, name, headline, badge, links, and projects."""
     photo_uri = _photo_data_uri()
     photo_tag = f'<img class="ag-photo" src="{photo_uri}" alt="George Traskas" />' if photo_uri else ""
+    project_chips = "".join(
+        f'<a class="ag-chip" href="{url}" target="_blank" rel="noopener">{label}</a>'
+        for label, url in PROJECT_LINKS
+    )
     return f"""
     <div id="ag-header">
         {photo_tag}
@@ -123,6 +181,7 @@ def _header_html() -> str:
             <a class="ag-link" href="https://www.linkedin.com/in/george-traskas/" target="_blank" rel="noopener">LinkedIn</a>
             <a class="ag-link" href="https://github.com/gtraskas" target="_blank" rel="noopener">GitHub</a>
             <a class="ag-link" href="mailto:georgiost77@gmail.com">Email</a>
+            <div class="ag-projects">{project_chips}</div>
         </div>
     </div>
     """
@@ -146,11 +205,17 @@ def build_ui(chat_fn: Callable[..., Any]) -> gr.Blocks:
     Returns:
         A :class:`gr.Blocks` page; serve it with :func:`serve_kwargs` applied.
     """
-    cv_path = ASSETS_DIR / "cv.pdf"
+    available_cvs = [
+        (label, ASSETS_DIR / filename)
+        for label, filename in CV_FILES
+        if (ASSETS_DIR / filename).exists()
+    ]
     with gr.Blocks(title="AskGeorge") as demo:
         gr.HTML(_header_html())
-        if cv_path.exists():
-            gr.DownloadButton("Download CV (PDF)", value=str(cv_path), size="sm")
+        if available_cvs:
+            with gr.Row():
+                for label, path in available_cvs:
+                    gr.DownloadButton(label, value=str(path), size="sm")
         gr.ChatInterface(
             fn=chat_fn,
             description=(
@@ -164,5 +229,7 @@ def build_ui(chat_fn: Callable[..., Any]) -> gr.Blocks:
                 "Are you open to remote roles?",
             ],
         )
+        with gr.Accordion("About this app — the tech behind AskGeorge", open=False):
+            gr.Markdown(ABOUT_MARKDOWN, elem_id="ag-about")
         gr.HTML('<div id="ag-footer">AskGeorge — AI representative of George Traskas</div>')
     return demo

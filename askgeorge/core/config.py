@@ -11,7 +11,7 @@ PRIVATE_DATA_DIR: Path = DATA_DIR / "private"
 ASSETS_DIR: Path = PACKAGE_DIR / "ui" / "assets"
 
 OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
-DEFAULT_CHAT_MODEL: str = "google/gemini-3.5-flash"
+DEFAULT_CHAT_MODEL: str = "openai/gpt-5-nano"
 MAX_TOOL_ROUNDS: int = 3
 
 EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"

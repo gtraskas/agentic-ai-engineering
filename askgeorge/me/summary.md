@@ -43,3 +43,5 @@ AI and ML Engineer with 8 years of experience building production-grade data sci
 ## What George is looking for
 
 AI Engineer, ML Engineer, Data Scientist, or Python Developer roles (remote-friendly) focused on real-world deployment — where scalable workflows and system reliability matter as much as model metrics. Best contact: georgiost77@gmail.com or LinkedIn.
+
+**Intro calls:** available weekday evenings 18:00-22:00 Athens time (EEST, UTC+3) — that is 17:00-21:00 Central Europe, 16:00-20:00 UK, 11:00-15:00 US Eastern, 08:00-12:00 US Pacific, so both European and US teams can book comfortably.

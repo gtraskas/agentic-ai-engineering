@@ -24,10 +24,10 @@ askgeorge/
     └── private/            # gitignored personal extras (still fed to the app)
 ```
 
-- **LLM:** any model via [OpenRouter](https://openrouter.ai) — default `google/gemini-3.5-flash`
+- **LLM:** any model via [OpenRouter](https://openrouter.ai) — default `openai/gpt-5-nano` (fast, ~5x cheaper than Gemini Flash Lite); switch anytime with `OPENROUTER_MODEL`
 - **Two switchable agent backends:** a from-scratch tool-calling loop and the OpenAI Agents SDK (`AGENT_BACKEND=scratch|sdk`)
 - **RAG:** documents chunked and embedded locally with FastEmbed, retrieved per question from `QdrantClient(":memory:")`; the summary stays pinned in the prompt
-- **UI:** Gradio Blocks with a custom Aegean Minimal theme; drop your photo at `ui/assets/photo.jpg` and a resume at `ui/assets/cv.pdf` to enable the header portrait and Download CV button
+- **UI:** Gradio Blocks with a custom Aegean Minimal theme; drop your photo at `ui/assets/photo.jpg` and resumes at `ui/assets/cv_ai_ml_engineer.pdf` / `ui/assets/cv_data_scientist.pdf` to enable the header portrait and per-role Download CV buttons
 
 ## Run locally
 
@@ -56,7 +56,7 @@ Every push runs lint + smoke tests via GitHub Actions; pushes to `master` auto-d
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `OPENROUTER_API_KEY` | yes | OpenRouter API key (openrouter.ai/keys) |
-| `OPENROUTER_MODEL` | no | Override the chat model (default `google/gemini-3.5-flash`) |
+| `OPENROUTER_MODEL` | no | Override the chat model (default `openai/gpt-5-nano`) |
 | `AGENT_BACKEND` | no | `scratch` (default) or `sdk` |
 | `ASKGEORGE_RAG` | no | Set `0` to disable RAG and pass the full corpus in context |
 | `GMAIL_ADDRESS` | no | Gmail address that sends and receives notifications |
