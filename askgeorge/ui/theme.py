@@ -34,8 +34,8 @@ PROJECT_LINKS: list[tuple[str, str]] = [
 ]
 
 CV_FILES: list[tuple[str, str]] = [
-    ("Download CV — AI/ML Engineer", "cv_ai_ml_engineer.pdf"),
-    ("Download CV — Data Scientist", "cv_data_scientist.pdf"),
+    ("Download CV — AI/ML Engineer", "Georgios_Traskas_AI_ML_Engineer.pdf"),
+    ("Download CV — Data Scientist", "Georgios_Traskas_Data_Scientist.pdf"),
 ]
 
 TECH_CHIPS: list[str] = [
@@ -366,7 +366,7 @@ def build_ui(chat_fn: Callable[..., Any]) -> gr.Blocks:
                 for label, path in available_cvs:
                     gr.DownloadButton(label, value=str(path), size="sm")
         gr.HTML(
-            '<div id="ag-subtitle">Ask me anything about George\'s experience, '
+            '<div id="ag-subtitle">Ask me anything about my experience, '
             "projects, and skills.</div>"
         )
         gr.ChatInterface(
