@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  checks:
+    name: Lint and smoke test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Sync dependencies
+        run: uv sync
+
+      - name: Ruff lint
+        run: uv run ruff check askgeorge/ || uvx ruff check askgeorge/
+
+      - name: Smoke test (build the app without network or RAG)
+        env:
+          OPENROUTER_API_KEY: dummy-key-for-ci
+          ASKGEORGE_RAG: "0"
+        run: |
+          uv run python -c "
+          from askgeorge.app import build_demo
+          demo = build_demo()
+          print('build_demo OK:', type(demo).__name__)
+          "
+
+      - name: Smoke test (SDK backend constructs)
+        env:
+          OPENROUTER_API_KEY: dummy-key-for-ci
+          ASKGEORGE_RAG: "0"
+          AGENT_BACKEND: sdk
+        run: |
+          uv run python -c "
+          from askgeorge.core import create_agent
+          agent = create_agent()
+          print('SDK backend OK:', type(agent).__name__)
+          "
+
+  deploy:
+    name: Deploy to Modal
+    needs: checks
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Modal credentials
+        id: creds
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+        run: |
+          if [ -n "$MODAL_TOKEN_ID" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "MODAL_TOKEN_ID/MODAL_TOKEN_SECRET secrets not set; skipping deploy."
+          fi
+
+      - name: Install uv
+        if: steps.creds.outputs.available == 'true'
+        uses: astral-sh/setup-uv@v5
+
+      - name: Deploy
+        if: steps.creds.outputs.available == 'true'
+        env:
+          MODAL_TOKEN_ID: ${{ secrets.MODAL_TOKEN_ID }}
+          MODAL_TOKEN_SECRET: ${{ secrets.MODAL_TOKEN_SECRET }}
+        run: |
+          uv sync
+          uv run modal deploy askgeorge/deploy_modal.py

@@ -9,6 +9,8 @@ dependencies = [
     "ipykernel>=7.3.0",
     "modal>=1.5.2",
     "openai>=2.46.0",
+    "openai-agents>=0.18.3",
     "pydantic>=2.13.4",
     "python-dotenv>=1.2.2",
+    "qdrant-client[fastembed]>=1.18.0",
 ]

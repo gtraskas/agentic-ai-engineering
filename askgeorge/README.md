@@ -1,29 +1,55 @@
 # AskGeorge
 
-An AI representative for Georgios Traskas. It answers questions from recruiters and hiring managers in first person, with streaming (token-by-token) replies, grounded strictly in George's professional background (`me/` directory: LinkedIn profile, summary, project portfolio). Unknown questions and contact requests are emailed straight to George via Gmail SMTP — nothing is stored on the server's ephemeral disk.
+An AI representative for Georgios Traskas. It answers questions from recruiters and hiring managers in first person, with streaming replies, grounded strictly in George's professional background. Unknown questions, contact requests, and call bookings are emailed straight to George via Gmail SMTP — nothing is stored on the server's ephemeral disk.
 
-- **UI:** Gradio `ChatInterface` (streaming)
-- **LLM:** any model via [OpenRouter](https://openrouter.ai) — default `google/gemini-3.5-flash`, switchable with one env var
-- **Hosting:** Modal (CPU container, scales to zero)
+## Architecture
+
+```
+askgeorge/
+├── app.py                  # entry point: build_demo() + launch
+├── deploy_modal.py         # Modal deployment (CPU, scales to zero)
+├── core/
+│   ├── config.py           # paths, models, env accessors
+│   ├── profile.py          # background corpus loading
+│   ├── knowledge.py        # in-memory Qdrant RAG (FastEmbed, local embeddings)
+│   ├── prompts.py          # system prompt + per-question context injection
+│   ├── tools.py            # tool schemas + shared dispatcher
+│   ├── notifier.py         # Gmail SMTP notifications
+│   ├── agent_scratch.py    # hand-rolled streaming tool-calling loop
+│   └── agent_sdk.py        # OpenAI Agents SDK backend
+├── ui/
+│   ├── theme.py            # Aegean Minimal theme, CSS, layout
+│   └── assets/             # photo.jpg, cv.pdf (optional)
+└── me/                     # knowledge base (markdown)
+    └── private/            # gitignored personal extras (still fed to the app)
+```
+
+- **LLM:** any model via [OpenRouter](https://openrouter.ai) — default `google/gemini-3.5-flash`
+- **Two switchable agent backends:** a from-scratch tool-calling loop and the OpenAI Agents SDK (`AGENT_BACKEND=scratch|sdk`)
+- **RAG:** documents chunked and embedded locally with FastEmbed, retrieved per question from `QdrantClient(":memory:")`; the summary stays pinned in the prompt
+- **UI:** Gradio Blocks with a custom Aegean Minimal theme; drop your photo at `ui/assets/photo.jpg` and a resume at `ui/assets/cv.pdf` to enable the header portrait and Download CV button
 
 ## Run locally
 
 ```bash
 uv sync
-cp .env.example .env   # add your OPENROUTER_API_KEY (and Gmail credentials, optional)
-uv run python askgeorge/app.py
+cp .env.example .env   # add your OPENROUTER_API_KEY (Gmail + booking URL optional)
+uv run python -m askgeorge.app
 ```
 
 ## Deploy to Modal
 
 ```bash
-uv run modal setup                                   # once
 uv run modal secret create askgeorge-secret \
-    OPENROUTER_API_KEY=... GMAIL_ADDRESS=... GMAIL_APP_PASSWORD=...
+    OPENROUTER_API_KEY=... GMAIL_ADDRESS=... GMAIL_APP_PASSWORD=... CALENDAR_BOOKING_URL=...
 uv run modal deploy askgeorge/deploy_modal.py
 ```
 
 The app is served at `https://<modal-username>--askgeorge-web.modal.run`.
+
+### CI/CD
+
+Every push runs lint + smoke tests via GitHub Actions; pushes to `master` auto-deploy to Modal when the `MODAL_TOKEN_ID` / `MODAL_TOKEN_SECRET` repository secrets are set (values live in `~/.modal.toml`).
 
 ## Environment variables
 
@@ -31,19 +57,10 @@ The app is served at `https://<modal-username>--askgeorge-web.modal.run`.
 | --- | --- | --- |
 | `OPENROUTER_API_KEY` | yes | OpenRouter API key (openrouter.ai/keys) |
 | `OPENROUTER_MODEL` | no | Override the chat model (default `google/gemini-3.5-flash`) |
-| `GMAIL_ADDRESS` | no | Gmail address that sends and receives lead notifications |
+| `AGENT_BACKEND` | no | `scratch` (default) or `sdk` |
+| `ASKGEORGE_RAG` | no | Set `0` to disable RAG and pass the full corpus in context |
+| `GMAIL_ADDRESS` | no | Gmail address that sends and receives notifications |
 | `GMAIL_APP_PASSWORD` | no | Gmail App Password (Google Account → Security → 2-Step Verification → App passwords) |
+| `CALENDAR_BOOKING_URL` | no | Google Calendar booking-page link; enables the schedule_intro_call tool |
 
 Without Gmail credentials the app still works — notifications go to the application log instead.
-
-## Roadmap
-
-- [ ] **Custom design** — branded Gradio theme with custom CSS/JS: header card (name, links, open-to-work badge), avatar on assistant messages, dark-mode aware styling, footer with contact buttons.
-- [ ] **In-memory Qdrant RAG** — ingest additional background documents, chunk and embed them locally with FastEmbed, retrieve top-k per question via `QdrantClient(":memory:")` while keeping the summary pinned in the prompt.
-- [ ] **Agent framework migration** — port the from-scratch tool-calling loop to the OpenAI Agents SDK (OpenRouter-compatible), keeping the current implementation as a baseline for comparison.
-- [ ] **More tools:**
-  - `get_live_github_projects` — fetch current repos from the GitHub API so project answers never go stale
-  - `analyze_job_fit` — recruiter pastes a job description, agent returns an honest fit assessment against the profile
-  - `send_cv` — share a downloadable resume PDF
-  - `schedule_intro_call` — offer a booking link and email George the context
-  - `search_background` — expose RAG retrieval as a tool the agent invokes on demand

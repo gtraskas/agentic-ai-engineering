@@ -5,10 +5,11 @@ Deploy with::
     modal deploy askgeorge/deploy_modal.py
 
 Requires a Modal secret named ``askgeorge-secret`` holding OPENROUTER_API_KEY
-and, optionally, GMAIL_ADDRESS / GMAIL_APP_PASSWORD for email notifications::
+and, optionally, GMAIL_ADDRESS / GMAIL_APP_PASSWORD (email notifications) and
+CALENDAR_BOOKING_URL (intro-call booking link)::
 
     modal secret create askgeorge-secret OPENROUTER_API_KEY=... \
-        GMAIL_ADDRESS=... GMAIL_APP_PASSWORD=...
+        GMAIL_ADDRESS=... GMAIL_APP_PASSWORD=... CALENDAR_BOOKING_URL=...
 """
 
 from __future__ import annotations
@@ -18,7 +19,8 @@ from pathlib import Path
 import modal
 
 APP_NAME: str = "askgeorge"
-LOCAL_DIR: Path = Path(__file__).parent
+PACKAGE_DIR: Path = Path(__file__).parent
+EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
 
 app = modal.App(APP_NAME)
 
@@ -27,11 +29,20 @@ image = (
     .pip_install(
         "gradio>=6.0,<7",
         "openai>=1.60",
+        "openai-agents>=0.2",
+        "qdrant-client[fastembed]>=1.12",
         "python-dotenv>=1.0",
         "fastapi[standard]>=0.115",
     )
-    .add_local_file(LOCAL_DIR / "app.py", remote_path="/root/app.py")
-    .add_local_dir(LOCAL_DIR / "me", remote_path="/root/me")
+    # Bake the embedding model into the image so cold starts skip the download.
+    .run_commands(
+        f"python -c \"from fastembed import TextEmbedding; TextEmbedding('{EMBEDDING_MODEL}')\""
+    )
+    .add_local_dir(
+        PACKAGE_DIR,
+        remote_path="/root/askgeorge",
+        ignore=["__pycache__", "*.pyc", ".DS_Store"],
+    )
 )
 
 
@@ -48,6 +59,9 @@ def web() -> "FastAPI":  # noqa: F821 — imported inside the Modal container
     import gradio as gr
     from fastapi import FastAPI
 
-    from app import build_demo
+    from askgeorge.app import build_demo
+    from askgeorge.ui.theme import serve_kwargs
 
-    return gr.mount_gradio_app(app=FastAPI(), blocks=build_demo(), path="/")
+    return gr.mount_gradio_app(
+        app=FastAPI(), blocks=build_demo(), path="/", **serve_kwargs()
+    )

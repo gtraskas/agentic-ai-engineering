@@ -17,3 +17,6 @@ wheels/
 
 # macOS
 .DS_Store
+
+# Personal background documents (fed to the app, never published)
+askgeorge/me/private/
