@@ -6,7 +6,6 @@ import json
 import logging
 from typing import Any
 
-from askgeorge.core.config import booking_url
 from askgeorge.core.notifier import EmailNotifier
 
 logger = logging.getLogger(__name__)
@@ -59,29 +58,6 @@ _RECORD_CONTACT_SCHEMA: dict[str, Any] = {
     },
 }
 
-_SCHEDULE_CALL_SCHEMA: dict[str, Any] = {
-    "type": "function",
-    "function": {
-        "name": "schedule_intro_call",
-        "description": (
-            "Get George's calendar booking link for an intro call. Call this "
-            "when a visitor wants to talk to George directly, then share the "
-            "returned link with them."
-        ),
-        "parameters": {
-            "type": "object",
-            "properties": {
-                "topic": {
-                    "type": "string",
-                    "description": "What the visitor wants to discuss, if known.",
-                }
-            },
-            "required": [],
-        },
-    },
-}
-
-
 class ToolDispatcher:
     """Executes agent tools, notifying George by email where appropriate."""
 
@@ -89,11 +65,8 @@ class ToolDispatcher:
         self._notifier = notifier
 
     def schemas(self) -> list[dict[str, Any]]:
-        """Return the OpenAI tool schemas active for this deployment."""
-        active = [_RECORD_UNKNOWN_SCHEMA, _RECORD_CONTACT_SCHEMA]
-        if booking_url():
-            active.append(_SCHEDULE_CALL_SCHEMA)
-        return active
+        """Return the OpenAI tool schemas (scratch backend only)."""
+        return [_RECORD_UNKNOWN_SCHEMA, _RECORD_CONTACT_SCHEMA]
 
     def record_unknown_question(self, question: str) -> dict[str, str]:
         """Email George a question the assistant could not answer."""
@@ -113,17 +86,6 @@ class ToolDispatcher:
         )
         return {"status": "recorded"}
 
-    def schedule_intro_call(self, topic: str = "not specified") -> dict[str, str]:
-        """Return George's booking link and email him the visitor's topic."""
-        url = booking_url()
-        if not url:
-            return {"status": "error", "detail": "booking link not configured"}
-        self._notifier.notify(
-            subject="AskGeorge: intro call requested",
-            body=f"A visitor asked to book an intro call.\nTopic: {topic}",
-        )
-        return {"status": "ok", "booking_url": url}
-
     def dispatch(self, name: str, arguments_json: str) -> dict[str, str]:
         """Execute a tool by name with JSON-encoded arguments (scratch backend).
 
@@ -142,7 +104,6 @@ class ToolDispatcher:
         handlers = {
             "record_unknown_question": self.record_unknown_question,
             "record_contact_request": self.record_contact_request,
-            "schedule_intro_call": self.schedule_intro_call,
         }
         handler = handlers.get(name)
         if handler is None:

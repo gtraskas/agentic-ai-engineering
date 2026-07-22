@@ -18,6 +18,7 @@ from askgeorge.core.config import (
     OPENROUTER_BASE_URL,
     chat_model,
     reasoning_extra_body,
+    temperature,
 )
 from askgeorge.core.knowledge import BackgroundKnowledge
 from askgeorge.core.profile import Profile
@@ -69,6 +70,7 @@ class ScratchAgent:
                 messages=messages,
                 tools=self._dispatcher.schemas(),
                 stream=True,
+                temperature=temperature(),
                 extra_body=reasoning_extra_body(),
             )
             for chunk in stream:

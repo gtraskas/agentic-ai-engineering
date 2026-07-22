@@ -7,12 +7,12 @@ from pathlib import Path
 
 PACKAGE_DIR: Path = Path(__file__).parent.parent
 DATA_DIR: Path = PACKAGE_DIR / "me"
-PRIVATE_DATA_DIR: Path = DATA_DIR / "private"
 ASSETS_DIR: Path = PACKAGE_DIR / "ui" / "assets"
 
 OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 DEFAULT_CHAT_MODEL: str = "google/gemini-3.1-flash-lite"
 DEFAULT_REASONING_EFFORT: str = "low"
+DEFAULT_TEMPERATURE: float = 0.2
 MAX_TOOL_ROUNDS: int = 3
 
 EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
@@ -45,9 +45,14 @@ def reasoning_extra_body() -> dict[str, dict[str, str]]:
     return {"reasoning": {"effort": effort}}
 
 
+def temperature() -> float:
+    """Return the sampling temperature: low keeps grounded answers consistent."""
+    return float(os.getenv("ASKGEORGE_TEMPERATURE", str(DEFAULT_TEMPERATURE)))
+
+
 def agent_backend() -> str:
-    """Return the selected agent backend: 'scratch' (default) or 'sdk'."""
-    return os.getenv("AGENT_BACKEND", "scratch").strip().lower()
+    """Return the selected agent backend: 'sdk' (default) or 'scratch'."""
+    return os.getenv("AGENT_BACKEND", "sdk").strip().lower()
 
 
 def rag_enabled() -> bool:

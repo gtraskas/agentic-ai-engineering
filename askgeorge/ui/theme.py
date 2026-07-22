@@ -381,6 +381,7 @@ def build_ui(chat_fn: Callable[..., Any]) -> gr.Blocks:
                 "What is your experience with RAG in production?",
                 "Tell me about your most recent project.",
                 "Why should we hire you as an AI engineer?",
+                "What do your clients say about working with you?",
                 "Are you open to remote roles?",
             ],
         )

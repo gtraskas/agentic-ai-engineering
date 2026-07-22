@@ -27,9 +27,6 @@ class Profile:
     def load(cls, data_dir: Path = DATA_DIR) -> Profile:
         """Load the summary and every other document under ``data_dir``.
 
-        Includes the gitignored ``private/`` subdirectory when present, so
-        personal extras feed the assistant without being published to GitHub.
-
         Args:
             data_dir: Directory containing summary.md and background documents.
 

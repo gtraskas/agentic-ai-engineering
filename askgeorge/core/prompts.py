@@ -39,10 +39,9 @@ _BASE_RULES: str = (
 )
 
 _BOOKING_RULE: str = (
-    "- If the visitor wants to talk to George directly, point them to the "
-    "'Book an intro call' section right below this chat, where they can pick a "
-    "slot on his calendar. Also call schedule_intro_call so George knows to "
-    "expect a booking.\n"
+    "- If the visitor wants to talk directly, point them to the 'Book an "
+    "intro call' section right below this chat, where they can pick a slot "
+    "on the calendar.\n"
 )
 
 

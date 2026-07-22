@@ -21,7 +21,6 @@ askgeorge/
 │   ├── theme.py            # Aegean Minimal theme, CSS, layout
 │   └── assets/             # photo.jpg, cv.pdf (optional)
 └── me/                     # knowledge base (markdown)
-    └── private/            # gitignored personal extras (still fed to the app)
 ```
 
 - **LLM:** any model via [OpenRouter](https://openrouter.ai) — default `google/gemini-3.1-flash-lite` with reasoning effort capped at `low` for fast first tokens; switch anytime with `OPENROUTER_MODEL` / `ASKGEORGE_REASONING`
@@ -58,10 +57,10 @@ Every push runs lint + smoke tests via GitHub Actions; pushes to `master` auto-d
 | `OPENROUTER_API_KEY` | yes | OpenRouter API key (openrouter.ai/keys) |
 | `OPENROUTER_MODEL` | no | Override the chat model (default `google/gemini-3.1-flash-lite`) |
 | `ASKGEORGE_REASONING` | no | Reasoning effort for thinking models (default `low`; e.g. `medium`, `high`) |
-| `AGENT_BACKEND` | no | `scratch` (default) or `sdk` |
+| `AGENT_BACKEND` | no | `sdk` (default, OpenAI Agents SDK) or `scratch` (from-scratch loop) |
 | `ASKGEORGE_RAG` | no | Set `0` to disable RAG and pass the full corpus in context |
 | `GMAIL_ADDRESS` | no | Gmail address that sends and receives notifications |
 | `GMAIL_APP_PASSWORD` | no | Gmail App Password (Google Account → Security → 2-Step Verification → App passwords) |
-| `CALENDAR_BOOKING_URL` | no | Google Calendar booking-page link; enables the schedule_intro_call tool |
+| `CALENDAR_BOOKING_URL` | no | Google Calendar booking-page link; enables the embedded booking calendar |
 
 Without Gmail credentials the app still works — notifications go to the application log instead.

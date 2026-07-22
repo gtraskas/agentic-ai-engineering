@@ -16,7 +16,12 @@ from agents import set_tracing_disabled
 from openai import AsyncOpenAI
 from openai.types.responses import ResponseTextDeltaEvent
 
-from askgeorge.core.config import OPENROUTER_BASE_URL, chat_model, reasoning_extra_body
+from askgeorge.core.config import (
+    OPENROUTER_BASE_URL,
+    chat_model,
+    reasoning_extra_body,
+    temperature,
+)
 from askgeorge.core.knowledge import BackgroundKnowledge
 from askgeorge.core.profile import Profile
 from askgeorge.core.prompts import augment_with_context, build_system_prompt
@@ -48,7 +53,7 @@ class SdkAgent:
             instructions=build_system_prompt(profile),
             model=model,
             model_settings=ModelSettings(
-                temperature=0.7, extra_body=reasoning_extra_body()
+                temperature=temperature(), extra_body=reasoning_extra_body()
             ),
             tools=self._build_tools(dispatcher),
         )
@@ -111,19 +116,7 @@ class SdkAgent:
             """
             return dispatcher.record_contact_request(email, name, notes)
 
-        @function_tool
-        def schedule_intro_call(topic: str = "not specified") -> dict[str, str]:
-            """Get George's calendar booking link for an intro call.
-
-            Args:
-                topic: What the visitor wants to discuss, if known.
-            """
-            return dispatcher.schedule_intro_call(topic)
-
-        tools: list[Any] = [record_unknown_question, record_contact_request]
-        if any(s["function"]["name"] == "schedule_intro_call" for s in dispatcher.schemas()):
-            tools.append(schedule_intro_call)
-        return tools
+        return [record_unknown_question, record_contact_request]
 
     @staticmethod
     def _sanitize_history(history: list[dict[str, Any]]) -> list[dict[str, str]]:
