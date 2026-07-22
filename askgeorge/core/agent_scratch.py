@@ -13,7 +13,12 @@ from typing import Any, Iterator
 
 from openai import OpenAI
 
-from askgeorge.core.config import MAX_TOOL_ROUNDS, OPENROUTER_BASE_URL, chat_model
+from askgeorge.core.config import (
+    MAX_TOOL_ROUNDS,
+    OPENROUTER_BASE_URL,
+    chat_model,
+    reasoning_extra_body,
+)
 from askgeorge.core.knowledge import BackgroundKnowledge
 from askgeorge.core.profile import Profile
 from askgeorge.core.prompts import augment_with_context, build_system_prompt
@@ -64,6 +69,7 @@ class ScratchAgent:
                 messages=messages,
                 tools=self._dispatcher.schemas(),
                 stream=True,
+                extra_body=reasoning_extra_body(),
             )
             for chunk in stream:
                 if not chunk.choices:

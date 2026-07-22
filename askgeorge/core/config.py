@@ -11,7 +11,8 @@ PRIVATE_DATA_DIR: Path = DATA_DIR / "private"
 ASSETS_DIR: Path = PACKAGE_DIR / "ui" / "assets"
 
 OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
-DEFAULT_CHAT_MODEL: str = "openai/gpt-5-nano"
+DEFAULT_CHAT_MODEL: str = "google/gemini-3.1-flash-lite"
+DEFAULT_REASONING_EFFORT: str = "low"
 MAX_TOOL_ROUNDS: int = 3
 
 EMBEDDING_MODEL: str = "BAAI/bge-small-en-v1.5"
@@ -31,6 +32,17 @@ def openrouter_api_key() -> str | None:
 def chat_model() -> str:
     """Return the chat model id, honoring the OPENROUTER_MODEL override."""
     return os.getenv("OPENROUTER_MODEL", DEFAULT_CHAT_MODEL)
+
+
+def reasoning_extra_body() -> dict[str, dict[str, str]]:
+    """Return OpenRouter extra body capping hidden 'thinking' for fast replies.
+
+    Reasoning-capable models (Gemini 3.x, GPT-5 family) think silently before
+    writing, which delays the first streamed token. Low effort keeps replies
+    snappy; override with ASKGEORGE_REASONING (e.g. 'medium', 'high').
+    """
+    effort = os.getenv("ASKGEORGE_REASONING", DEFAULT_REASONING_EFFORT)
+    return {"reasoning": {"effort": effort}}
 
 
 def agent_backend() -> str:

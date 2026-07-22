@@ -12,11 +12,40 @@ from typing import Any, Callable
 
 import gradio as gr
 
-from askgeorge.core.config import ASSETS_DIR
+from askgeorge.core.config import ASSETS_DIR, booking_url
 
 ACCENT: str = "#0EA5E9"
 INK: str = "#0F172A"
 CANVAS: str = "#FAFAF8"
+CHAT_HEIGHT: int = 440
+CALENDAR_HEIGHT: int = 620
+
+REPO_URL: str = "https://github.com/gtraskas/agentic-ai-engineering"
+
+PROJECT_LINKS: list[tuple[str, str]] = [
+    ("🍳 MolekitChen — App Store", "https://apps.apple.com/us/app/molekitchen/id6773031788"),
+    ("🌐 MolekitChen — site", "https://molekitchen-landing.pages.dev"),
+    ("🍷 Wine-VFM — live demo", "https://gtraskas--wine-vfm-app-web.modal.run"),
+    ("⚙️ Wine-VFM — code", "https://github.com/gtraskas/wine-vfm"),
+    ("🤖 AskGeorge — code", REPO_URL),
+]
+
+CV_FILES: list[tuple[str, str]] = [
+    ("Download CV — AI/ML Engineer", "cv_ai_ml_engineer.pdf"),
+    ("Download CV — Data Scientist", "cv_data_scientist.pdf"),
+]
+
+TECH_CHIPS: list[str] = [
+    "Python",
+    "OpenAI Agents SDK",
+    "Qdrant RAG",
+    "FastEmbed",
+    "OpenRouter",
+    "Gradio",
+    "Modal",
+    "GitHub Actions CI/CD",
+    "uv",
+]
 
 AEGEAN_CSS: str = f"""
 .gradio-container {{
@@ -77,7 +106,8 @@ AEGEAN_CSS: str = f"""
 #ag-header .ag-projects {{
     margin-top: 8px;
 }}
-#ag-header a.ag-chip {{
+#ag-header a.ag-chip,
+#ag-stack .ag-tech {{
     display: inline-block;
     font-size: 0.78rem;
     font-weight: 600;
@@ -93,9 +123,56 @@ AEGEAN_CSS: str = f"""
     border-color: {ACCENT};
     color: {ACCENT};
 }}
-#ag-about {{
+/* Flat panel chat: hide label, soften the frame */
+#ag-chat .label-wrap, #ag-chat label {{
+    display: none !important;
+}}
+#ag-chat .panel {{
+    background: #FFFFFF;
+}}
+/* Example questions: neat row at the bottom of the chat box */
+#ag-chat .examples {{
+    justify-content: center;
+    gap: 8px;
+    padding-top: 4px;
+}}
+#ag-book {{
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 18px 22px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}}
+#ag-book .ag-book-title {{
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: {INK};
+    margin: 0 0 4px 0;
+}}
+#ag-book .ag-book-sub {{
     font-size: 0.85rem;
     color: #475569;
+    margin: 0 0 12px 0;
+}}
+#ag-book iframe {{
+    width: 100%;
+    height: {CALENDAR_HEIGHT}px;
+    border: 0;
+    border-radius: 10px;
+}}
+#ag-stack {{
+    text-align: center;
+    padding: 14px 0 4px 0;
+}}
+#ag-stack .ag-stack-line {{
+    font-size: 0.82rem;
+    color: #64748B;
+    margin-bottom: 8px;
+}}
+#ag-stack a {{
+    color: {ACCENT};
+    text-decoration: none;
+    font-weight: 600;
 }}
 #ag-footer {{
     text-align: center;
@@ -103,37 +180,6 @@ AEGEAN_CSS: str = f"""
     color: #94A3B8;
     padding-top: 6px;
 }}
-"""
-
-PROJECT_LINKS: list[tuple[str, str]] = [
-    ("🍳 MolekitChen — App Store", "https://apps.apple.com/us/app/molekitchen/id6773031788"),
-    ("🌐 MolekitChen — site", "https://molekitchen-landing.pages.dev"),
-    ("🍷 Wine-VFM — live demo", "https://gtraskas--wine-vfm-app-web.modal.run"),
-    ("⚙️ Wine-VFM — code", "https://github.com/gtraskas/wine-vfm"),
-    ("🤖 AskGeorge — code", "https://github.com/gtraskas/agentic-ai-engineering"),
-]
-
-CV_FILES: list[tuple[str, str]] = [
-    ("Download CV — AI/ML Engineer", "cv_ai_ml_engineer.pdf"),
-    ("Download CV — Data Scientist", "cv_data_scientist.pdf"),
-]
-
-ABOUT_MARKDOWN: str = """
-**How this app is built** — AskGeorge is itself one of George's projects: a
-production agentic AI system, open source on
-[GitHub](https://github.com/gtraskas/agentic-ai-engineering).
-
-- **Python** with OOP architecture, dependencies managed by **uv**
-- **Two switchable agent backends**: a from-scratch streaming tool-calling loop
-  and the **OpenAI Agents SDK**
-- **RAG**: background documents chunked and embedded locally with **FastEmbed**,
-  retrieved per question from an in-memory **Qdrant** vector store
-- **LLM-agnostic** via **OpenRouter** (one env var swaps the model)
-- **Tools**: unanswered questions, contact requests, and call bookings are
-  emailed to George in real time (Gmail SMTP — nothing stored server-side)
-- **UI**: **Gradio 6** with a custom theme, token-by-token streaming
-- **Serverless deployment** on **Modal** (CPU container, scales to zero) with
-  **GitHub Actions CI/CD** — lint, smoke tests, auto-deploy on every push
 """
 
 
@@ -150,6 +196,14 @@ def build_theme() -> gr.themes.Base:
         button_primary_background_fill=ACCENT,
         button_primary_text_color="#FFFFFF",
     )
+
+
+def serve_kwargs() -> dict[str, Any]:
+    """Return the theme/css kwargs for ``launch()`` or ``mount_gradio_app()``.
+
+    Gradio 6 applies theme and CSS at serve time, not at Blocks construction.
+    """
+    return {"theme": build_theme(), "css": AEGEAN_CSS}
 
 
 def _photo_data_uri(assets_dir: Path = ASSETS_DIR) -> str | None:
@@ -187,12 +241,31 @@ def _header_html() -> str:
     """
 
 
-def serve_kwargs() -> dict[str, Any]:
-    """Return the theme/css kwargs for ``launch()`` or ``mount_gradio_app()``.
-
-    Gradio 6 applies theme and CSS at serve time, not at Blocks construction.
+def _booking_html(url: str) -> str:
+    """Build the embedded Google Calendar booking section."""
+    embed_src = url if "?" in url else f"{url}?gv=true"
+    return f"""
+    <div id="ag-book">
+        <p class="ag-book-title">📅 Book an intro call</p>
+        <p class="ag-book-sub">Weekday evenings, Athens time — slots shown in your timezone.</p>
+        <iframe src="{embed_src}" title="Book an intro call with George"></iframe>
+    </div>
     """
-    return {"theme": build_theme(), "css": AEGEAN_CSS}
+
+
+def _stack_html() -> str:
+    """Build the tech chip strip: one-line pitch + linked technology chips."""
+    chips = "".join(f'<span class="ag-tech">{chip}</span>' for chip in TECH_CHIPS)
+    return f"""
+    <div id="ag-stack">
+        <div class="ag-stack-line">
+            This assistant is itself one of George's projects — an
+            <a href="{REPO_URL}" target="_blank" rel="noopener">open-source</a>
+            production agentic AI system.
+        </div>
+        {chips}
+    </div>
+    """
 
 
 def build_ui(chat_fn: Callable[..., Any]) -> gr.Blocks:
@@ -218,9 +291,12 @@ def build_ui(chat_fn: Callable[..., Any]) -> gr.Blocks:
                     gr.DownloadButton(label, value=str(path), size="sm")
         gr.ChatInterface(
             fn=chat_fn,
-            description=(
-                "Hi, I'm George's AI representative — ask me anything about his "
-                "experience, projects, and skills."
+            chatbot=gr.Chatbot(
+                layout="panel",
+                show_label=False,
+                height=CHAT_HEIGHT,
+                placeholder="Ask me anything about George's experience, projects, and skills.",
+                elem_id="ag-chat",
             ),
             examples=[
                 "What is your experience with RAG in production?",
@@ -229,7 +305,9 @@ def build_ui(chat_fn: Callable[..., Any]) -> gr.Blocks:
                 "Are you open to remote roles?",
             ],
         )
-        with gr.Accordion("About this app — the tech behind AskGeorge", open=False):
-            gr.Markdown(ABOUT_MARKDOWN, elem_id="ag-about")
+        calendar_url = booking_url()
+        if calendar_url:
+            gr.HTML(_booking_html(calendar_url))
+        gr.HTML(_stack_html())
         gr.HTML('<div id="ag-footer">AskGeorge — AI representative of George Traskas</div>')
     return demo

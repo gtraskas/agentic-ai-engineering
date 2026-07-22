@@ -16,7 +16,7 @@ from agents import set_tracing_disabled
 from openai import AsyncOpenAI
 from openai.types.responses import ResponseTextDeltaEvent
 
-from askgeorge.core.config import OPENROUTER_BASE_URL, chat_model
+from askgeorge.core.config import OPENROUTER_BASE_URL, chat_model, reasoning_extra_body
 from askgeorge.core.knowledge import BackgroundKnowledge
 from askgeorge.core.profile import Profile
 from askgeorge.core.prompts import augment_with_context, build_system_prompt
@@ -47,7 +47,9 @@ class SdkAgent:
             name="AskGeorge",
             instructions=build_system_prompt(profile),
             model=model,
-            model_settings=ModelSettings(temperature=0.7),
+            model_settings=ModelSettings(
+                temperature=0.7, extra_body=reasoning_extra_body()
+            ),
             tools=self._build_tools(dispatcher),
         )
 
