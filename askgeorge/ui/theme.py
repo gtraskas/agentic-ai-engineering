@@ -62,6 +62,10 @@ PAGE_SUBTITLE: str = (
 )
 
 AEGEAN_CSS: str = f"""
+/* Single-theme page: pin the canvas even when the OS prefers dark */
+body, .gradio-container {{
+    background: {CANVAS} !important;
+}}
 .gradio-container {{
     max-width: 880px !important;
     margin: 0 auto !important;
@@ -333,12 +337,31 @@ def build_theme() -> gr.themes.Base:
     )
 
 
+_FORCE_LIGHT_HEAD: str = (
+    '<meta name="color-scheme" content="light">'
+    "<script>(function () {"
+    'var url = new URL(window.location.href);'
+    'if (url.searchParams.get("__theme") !== "light") {'
+    'url.searchParams.set("__theme", "light");'
+    "window.location.replace(url.href);"
+    "}})();</script>"
+)
+
+
 def serve_kwargs() -> dict[str, Any]:
-    """Return the theme/css kwargs for ``launch()`` or ``mount_gradio_app()``.
+    """Return the theme/css/head kwargs for ``launch()`` or ``mount_gradio_app()``.
 
     Gradio 6 applies theme and CSS at serve time, not at Blocks construction.
+    The head script forces Gradio's light mode for every visitor before the app
+    mounts: the page is a single-theme design, and dark-mode browsers would
+    otherwise render light cards with near-white text (invisible example chips
+    and chat replies).
     """
-    return {"theme": build_theme(), "css": AEGEAN_CSS}
+    return {
+        "theme": build_theme(),
+        "css": AEGEAN_CSS,
+        "head": _FORCE_LIGHT_HEAD,
+    }
 
 
 def _photo_data_uri(assets_dir: Path = ASSETS_DIR) -> str | None:
