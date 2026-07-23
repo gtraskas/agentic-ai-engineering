@@ -291,6 +291,20 @@ AEGEAN_CSS: str = f"""
     color: #475569;
     padding: 6px 0 2px 0;
 }}
+/* Match the paste box height to the chat panel for a consistent layout */
+#ag-jobfit-box textarea {{
+    height: {CHAT_HEIGHT}px !important;
+}}
+/* While the analysis streams, the report card pulses softly in the accent */
+#ag-jobfit-report.generating,
+#ag-jobfit-report .generating {{
+    border-color: {ACCENT} !important;
+    animation: ag-pulse 1.6s ease-in-out infinite;
+}}
+@keyframes ag-pulse {{
+    0%, 100% {{ box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.25); }}
+    50% {{ box-shadow: 0 0 0 7px rgba(14, 165, 233, 0.05); }}
+}}
 #ag-jobfit-report {{
     background: #FFFFFF;
     border: 1px solid #E2E8F0;
@@ -460,15 +474,25 @@ def _rate_limited(chat_fn: Callable[..., Any], limiter: RateLimiter) -> Callable
 def _jobfit_handler(
     jobfit_fn: Callable[[str], Any], limiter: RateLimiter
 ) -> Callable[..., Any]:
-    """Wrap the job-fit analyzer with the shared rate limiter."""
+    """Wrap the job-fit analyzer with the shared rate limiter.
+
+    Yields (report_markdown, button_update) pairs so the Analyze button reads
+    "Analyzing…" and is disabled while the pipeline runs — visible feedback
+    and double-click protection in one.
+    """
+    busy = gr.Button(value="Analyzing…", interactive=False)
+    ready = gr.Button(value="Analyze fit", interactive=True)
 
     async def handler(job_description: str, request: gr.Request):
         refusal = limiter.check(_visitor_ip(request))
         if refusal:
-            yield refusal
+            yield refusal, ready
             return
+        last = ""
         async for markdown in jobfit_fn(job_description):
-            yield markdown
+            last = markdown
+            yield markdown, busy
+        yield last, ready
 
     return handler
 
@@ -528,12 +552,20 @@ def build_ui(
                 job_description = gr.Textbox(
                     label="Job description",
                     placeholder="Paste the full job description here…",
-                    lines=12,
+                    lines=16,
+                    elem_id="ag-jobfit-box",
                 )
-                analyze_button = gr.Button("Analyze fit", variant="primary")
+                with gr.Row():
+                    analyze_button = gr.Button("Analyze fit", variant="primary")
+                    clear_button = gr.ClearButton(
+                        value="Clear — analyze another role", size="sm"
+                    )
                 report = gr.Markdown(elem_id="ag-jobfit-report")
+                clear_button.add([job_description, report])
                 analyze_button.click(
-                    fn=jobfit_handler, inputs=[job_description], outputs=[report]
+                    fn=jobfit_handler,
+                    inputs=[job_description],
+                    outputs=[report, analyze_button],
                 )
         calendar_url = booking_url()
         if calendar_url:
