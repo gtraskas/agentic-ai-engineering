@@ -254,6 +254,38 @@ AEGEAN_CSS: str = f"""
     color: #94A3B8;
     padding-top: 6px;
 }}
+/* Segmented-control tabs: centered pill switcher (stable ARIA selectors) */
+.gradio-container [role="tablist"] {{
+    justify-content: center;
+    width: fit-content;
+    margin: 8px auto 12px auto;
+    background: #EEF2F6;
+    border: 1px solid #E2E8F0;
+    border-bottom: 1px solid #E2E8F0 !important;
+    border-radius: 999px;
+    padding: 4px;
+    gap: 4px;
+}}
+.gradio-container button[role="tab"] {{
+    border: none !important;
+    border-radius: 999px !important;
+    padding: 9px 28px !important;
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    color: #64748B !important;
+    background: transparent !important;
+}}
+.gradio-container button[role="tab"]:hover {{
+    color: {INK} !important;
+}}
+.gradio-container button[role="tab"]::after {{
+    display: none !important;  /* Gradio's native underline indicator */
+}}
+.gradio-container button[role="tab"][aria-selected="true"] {{
+    background: #FFFFFF !important;
+    color: {ACCENT} !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12) !important;
+}}
 #ag-jobfit-intro {{
     font-size: 0.92rem;
     color: #475569;
@@ -470,7 +502,7 @@ def build_ui(
                 for label, path in available_cvs:
                     gr.DownloadButton(label, value=str(path), size="sm")
         with gr.Tabs():
-            with gr.Tab("Chat"):
+            with gr.Tab("Chat with me"):
                 gr.HTML(
                     '<div id="ag-subtitle">Ask me anything about my experience, '
                     "projects, and skills.</div>"
@@ -491,7 +523,7 @@ def build_ui(
                         "Are you open to remote roles?",
                     ],
                 )
-            with gr.Tab("Job fit analysis"):
+            with gr.Tab("Analyze a job fit"):
                 gr.Markdown(JOBFIT_INTRO, elem_id="ag-jobfit-intro")
                 job_description = gr.Textbox(
                     label="Job description",
