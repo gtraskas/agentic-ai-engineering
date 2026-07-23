@@ -56,11 +56,9 @@ TECH_CHIPS: list[str] = [
     "uv",
 ]
 
-JOBFIT_INTRO: str = (
-    "**Paste a job description and I'll assess my honest fit for it.** "
-    "I break the role into its requirements, weigh each against my real "
-    "background, and give you a straight verdict — strengths, gaps and all. "
-    "No fluff, no flattery."
+PAGE_SUBTITLE: str = (
+    '<div id="ag-subtitle">Chat with me about my experience, or paste a '
+    "job description and get my honest fit for the role.</div>"
 )
 
 AEGEAN_CSS: str = f"""
@@ -285,11 +283,6 @@ AEGEAN_CSS: str = f"""
     background: #FFFFFF !important;
     color: {ACCENT} !important;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12) !important;
-}}
-#ag-jobfit-intro {{
-    font-size: 0.92rem;
-    color: #475569;
-    padding: 6px 0 2px 0;
 }}
 /* Match the paste box height to the chat panel for a consistent layout */
 #ag-jobfit-box textarea {{
@@ -525,12 +518,9 @@ def build_ui(
             with gr.Row():
                 for label, path in available_cvs:
                     gr.DownloadButton(label, value=str(path), size="sm")
+        gr.HTML(PAGE_SUBTITLE)
         with gr.Tabs():
             with gr.Tab("Chat with me"):
-                gr.HTML(
-                    '<div id="ag-subtitle">Ask me anything about my experience, '
-                    "projects, and skills.</div>"
-                )
                 gr.ChatInterface(
                     fn=chat_fn,
                     chatbot=gr.Chatbot(
@@ -548,7 +538,6 @@ def build_ui(
                     ],
                 )
             with gr.Tab("Analyze a job fit"):
-                gr.Markdown(JOBFIT_INTRO, elem_id="ag-jobfit-intro")
                 job_description = gr.Textbox(
                     label="Job description",
                     placeholder="Paste the full job description here…",
@@ -556,9 +545,11 @@ def build_ui(
                     elem_id="ag-jobfit-box",
                 )
                 with gr.Row():
-                    analyze_button = gr.Button("Analyze fit", variant="primary")
+                    analyze_button = gr.Button(
+                        "Analyze fit", variant="primary", scale=1
+                    )
                     clear_button = gr.ClearButton(
-                        value="Clear — analyze another role", size="sm"
+                        value="Clear for a new analysis", variant="secondary", scale=1
                     )
                 report = gr.Markdown(elem_id="ag-jobfit-report")
                 clear_button.add([job_description, report])
