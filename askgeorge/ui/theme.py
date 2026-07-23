@@ -319,6 +319,13 @@ body, .gradio-container {{
     padding: 6px 10px;
     text-align: left;
 }}
+/* Type and My fit columns shrink to their content on one line;
+   the Requirement column takes all remaining width */
+#ag-jobfit-report th:nth-child(2), #ag-jobfit-report td:nth-child(2),
+#ag-jobfit-report th:nth-child(3), #ag-jobfit-report td:nth-child(3) {{
+    white-space: nowrap;
+    width: 1%;
+}}
 """
 
 
