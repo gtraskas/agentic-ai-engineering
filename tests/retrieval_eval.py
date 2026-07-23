@@ -40,6 +40,7 @@ GOLDEN_SET: list[tuple[str, str]] = [
     ("How do you keep LLM API costs under control?", "Two-tier"),
     ("How do you test non-deterministic agent behaviour?", "semantic similarity"),
     ("What certifications do you hold?", "[source: linkedin.md]"),
+    ("How does the job-fit analysis work?", "anti-flattery"),
 ]
 
 

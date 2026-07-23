@@ -21,6 +21,9 @@ RAG_COLLECTION: str = "background"
 RAG_TOP_K: int = 10
 CHUNK_MAX_CHARS: int = 1_200
 
+JOBFIT_MIN_CHARS: int = 120
+JOBFIT_MAX_CHARS: int = 8_000
+
 SMTP_HOST: str = "smtp.gmail.com"
 SMTP_PORT: int = 465
 
@@ -33,6 +36,11 @@ def openrouter_api_key() -> str | None:
 def chat_model() -> str:
     """Return the chat model id, honoring the OPENROUTER_MODEL override."""
     return os.getenv("OPENROUTER_MODEL", DEFAULT_CHAT_MODEL)
+
+
+def jobfit_model() -> str:
+    """Return the job-fit model id (defaults to the chat model)."""
+    return os.getenv("JOBFIT_MODEL", chat_model())
 
 
 def reasoning_extra_body() -> dict[str, dict[str, str]]:

@@ -12,7 +12,7 @@ import logging
 import gradio as gr
 from dotenv import load_dotenv
 
-from askgeorge.core import create_agent
+from askgeorge.core import create_app_components
 from askgeorge.ui.theme import build_ui, serve_kwargs
 
 
@@ -24,7 +24,8 @@ def build_demo() -> gr.Blocks:
     """
     load_dotenv(override=True)
     logging.basicConfig(level=logging.INFO)
-    return build_ui(create_agent().chat)
+    agent, analyzer = create_app_components()
+    return build_ui(agent.chat, analyzer.analyze)
 
 
 if __name__ == "__main__":

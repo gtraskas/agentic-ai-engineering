@@ -99,6 +99,7 @@ The assistant answering right now is itself one of George's projects: a producti
 - LLM-agnostic via OpenRouter; tools email George in real time (leads, unanswered questions).
 - Input guardrail: a parallel judge LLM with a structured Pydantic verdict blocks off-topic, dangerous, and prompt-injection messages.
 - Rate limiting: in-memory sliding windows (per-visitor hourly cap, global daily cap) protect the API budget.
+- Job-fit analysis: a recruiter pastes a job description; a structured pipeline parses it into requirements, judges each against George's background via RAG, computes an honest overall band, synthesizes a first-person report, and runs an anti-flattery verifier — every run emails George the role and verdict.
 - Gradio UI with custom theme and embedded booking calendar; serverless on Modal (scales to zero); GitHub Actions CI/CD with auto-deploy.
 
 **Key decisions:**
@@ -106,6 +107,7 @@ The assistant answering right now is itself one of George's projects: a producti
 - **In-memory Qdrant over a hosted vector database:** the corpus is small (a handful of markdown files) and static between deployments, and the app runs serverless with scale-to-zero — an always-on database would cost money to sit idle. Rebuilding the index in RAM at container startup takes seconds, needs zero infrastructure, and leaves nothing to operate or secure.
 - **Hybrid dense + sparse retrieval:** dense embeddings catch meaning, a local BM25 sparse model catches exact terms (tool names, acronyms), fused by Qdrant — the same hybrid pattern as MolekitChen, fully local with FastEmbed.
 - **Retrieval golden-set eval in CI:** ~20 recruiter-style questions each assert an expected needle in the retrieved context; any corpus or chunking change that silently breaks recall fails the build before it deploys.
+- **Job-fit as a structured pipeline, not one prompt:** parse the job description into typed requirements, judge each one against retrieved evidence (concurrent calls via asyncio.gather), compute the overall band deterministically in code so a must-have gap can never read as a strong fit, then synthesize and run an anti-flattery verifier that regenerates the report if it overclaims. The pasted description is treated strictly as untrusted data — injection attempts and impossible requirements produce an honest "limited fit", never a fabricated match.
 - **FastEmbed for embeddings:** runs locally inside the container (no API calls, no per-query cost, no external dependency at question time). The model (BAAI/bge-small-en-v1.5, 384 dimensions) is baked into the Docker image so cold starts skip the download.
 - **Heading-aware chunking:** each chunk carries its markdown heading path (e.g. "[Wine-VFM > Key decisions]"), so retrieval matches on section context, not just body text — small custom splitter, no framework dependency.
 - **OpenRouter instead of one provider:** one API for every LLM; the model is a single env var. Swapping Gemini for GPT or Llama requires no code change.

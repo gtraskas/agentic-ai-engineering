@@ -45,6 +45,7 @@ TECH_CHIPS: list[str] = [
     "OpenAI Agents SDK",
     "Hybrid RAG · Qdrant + BM25",
     "FastEmbed",
+    "Structured Job-Fit Pipeline",
     "LLM Guardrails",
     "Rate Limiting",
     "Golden-set Evals",
@@ -54,6 +55,13 @@ TECH_CHIPS: list[str] = [
     "GitHub Actions CI/CD",
     "uv",
 ]
+
+JOBFIT_INTRO: str = (
+    "**Paste a job description and I'll assess my honest fit for it.** "
+    "I break the role into its requirements, weigh each against my real "
+    "background, and give you a straight verdict — strengths, gaps and all. "
+    "No fluff, no flattery."
+)
 
 AEGEAN_CSS: str = f"""
 .gradio-container {{
@@ -246,6 +254,28 @@ AEGEAN_CSS: str = f"""
     color: #94A3B8;
     padding-top: 6px;
 }}
+#ag-jobfit-intro {{
+    font-size: 0.92rem;
+    color: #475569;
+    padding: 6px 0 2px 0;
+}}
+#ag-jobfit-report {{
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    border-radius: 16px;
+    padding: 6px 22px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+}}
+#ag-jobfit-report table {{
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.86rem;
+}}
+#ag-jobfit-report th, #ag-jobfit-report td {{
+    border-bottom: 1px solid #EEF2F6;
+    padding: 6px 10px;
+    text-align: left;
+}}
 """
 
 
@@ -395,17 +425,39 @@ def _rate_limited(chat_fn: Callable[..., Any], limiter: RateLimiter) -> Callable
     return sync_wrapper
 
 
-def build_ui(chat_fn: Callable[..., Any]) -> gr.Blocks:
-    """Assemble the complete AskGeorge page around the chat function.
+def _jobfit_handler(
+    jobfit_fn: Callable[[str], Any], limiter: RateLimiter
+) -> Callable[..., Any]:
+    """Wrap the job-fit analyzer with the shared rate limiter."""
+
+    async def handler(job_description: str, request: gr.Request):
+        refusal = limiter.check(_visitor_ip(request))
+        if refusal:
+            yield refusal
+            return
+        async for markdown in jobfit_fn(job_description):
+            yield markdown
+
+    return handler
+
+
+def build_ui(
+    chat_fn: Callable[..., Any], jobfit_fn: Callable[[str], Any]
+) -> gr.Blocks:
+    """Assemble the complete AskGeorge page: chat plus job-fit analysis.
 
     Args:
-        chat_fn: Streaming chat callable (sync or async generator) with the
-            Gradio ChatInterface signature (message, history).
+        chat_fn: Streaming chat callable with the Gradio ChatInterface
+            signature (message, history).
+        jobfit_fn: Async generator taking a job description and yielding
+            Markdown progress then the final report.
 
     Returns:
         A :class:`gr.Blocks` page; serve it with :func:`serve_kwargs` applied.
     """
-    chat_fn = _rate_limited(chat_fn, RateLimiter())
+    limiter = RateLimiter()
+    chat_fn = _rate_limited(chat_fn, limiter)
+    jobfit_handler = _jobfit_handler(jobfit_fn, limiter)
     available_cvs = [
         (label, ASSETS_DIR / filename)
         for label, filename in CV_FILES
@@ -417,26 +469,40 @@ def build_ui(chat_fn: Callable[..., Any]) -> gr.Blocks:
             with gr.Row():
                 for label, path in available_cvs:
                     gr.DownloadButton(label, value=str(path), size="sm")
-        gr.HTML(
-            '<div id="ag-subtitle">Ask me anything about my experience, '
-            "projects, and skills.</div>"
-        )
-        gr.ChatInterface(
-            fn=chat_fn,
-            chatbot=gr.Chatbot(
-                layout="panel",
-                show_label=False,
-                height=CHAT_HEIGHT,
-                elem_id="ag-chat",
-            ),
-            examples=[
-                "What is your experience with RAG in production?",
-                "Tell me about your most recent project.",
-                "Why should we hire you as an AI engineer?",
-                "What do your clients say about working with you?",
-                "Are you open to remote roles?",
-            ],
-        )
+        with gr.Tabs():
+            with gr.Tab("Chat"):
+                gr.HTML(
+                    '<div id="ag-subtitle">Ask me anything about my experience, '
+                    "projects, and skills.</div>"
+                )
+                gr.ChatInterface(
+                    fn=chat_fn,
+                    chatbot=gr.Chatbot(
+                        layout="panel",
+                        show_label=False,
+                        height=CHAT_HEIGHT,
+                        elem_id="ag-chat",
+                    ),
+                    examples=[
+                        "What is your experience with RAG in production?",
+                        "Tell me about your most recent project.",
+                        "Why should we hire you as an AI engineer?",
+                        "What do your clients say about working with you?",
+                        "Are you open to remote roles?",
+                    ],
+                )
+            with gr.Tab("Job fit analysis"):
+                gr.Markdown(JOBFIT_INTRO, elem_id="ag-jobfit-intro")
+                job_description = gr.Textbox(
+                    label="Job description",
+                    placeholder="Paste the full job description here…",
+                    lines=12,
+                )
+                analyze_button = gr.Button("Analyze fit", variant="primary")
+                report = gr.Markdown(elem_id="ag-jobfit-report")
+                analyze_button.click(
+                    fn=jobfit_handler, inputs=[job_description], outputs=[report]
+                )
         calendar_url = booking_url()
         if calendar_url:
             gr.HTML(_booking_html(calendar_url))
