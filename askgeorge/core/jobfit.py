@@ -17,9 +17,10 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import AsyncIterator, Literal
+from typing import AsyncIterator, Literal, TypeVar
 
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, OpenAIError
+from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, Field, ValidationError
 
 from askgeorge.core.config import (
@@ -34,6 +35,16 @@ from askgeorge.core.notifier import EmailNotifier
 from askgeorge.core.profile import Profile
 
 logger = logging.getLogger(__name__)
+
+# Any error a pipeline stage may raise: schema validation, bad values, network
+# (OSError), or an OpenRouter/OpenAI API error (rate limit, timeout, 5xx, 4xx).
+_PIPELINE_ERRORS: tuple[type[Exception], ...] = (
+    ValidationError,
+    ValueError,
+    OSError,
+    OpenAIError,
+)
+_SchemaT = TypeVar("_SchemaT", bound=BaseModel)
 
 MAX_REQUIREMENTS: int = 12
 _PARSE_TEMPERATURE: float = 0.2
@@ -196,7 +207,7 @@ class JobFitAnalyzer:
         yield "_Reading the role and pulling out its requirements…_"
         try:
             parsed = await self._parse(text)
-        except (ValidationError, ValueError, OSError) as exc:
+        except _PIPELINE_ERRORS as exc:
             logger.error("Job-fit parse failed: %s", exc)
             yield "_Sorry — I couldn't read that job description. Please try again._"
             return
@@ -210,8 +221,13 @@ class JobFitAnalyzer:
 
         band = self._compute_band(pairs)
         yield f"_Overall read: {band}. Writing the assessment…_"
-        report = await self._synthesize(parsed, band, pairs)
-        report = await self._verify(report, parsed, band, pairs)
+        try:
+            report = await self._synthesize(parsed, band, pairs)
+            report = await self._verify(report, parsed, band, pairs)
+        except _PIPELINE_ERRORS as exc:
+            logger.error("Job-fit synthesis failed: %s", exc)
+            yield "_Sorry — I couldn't finish the assessment. Please try again._"
+            return
 
         await asyncio.to_thread(self._email, parsed, band)
         yield self._render(parsed, band, report, pairs)
@@ -249,7 +265,7 @@ class JobFitAnalyzer:
                 _JUDGE_TEMPERATURE,
             )
             return requirement, judgment
-        except (ValidationError, ValueError, OSError) as exc:
+        except _PIPELINE_ERRORS as exc:
             logger.warning("Judge failed for %r: %s", requirement.text, exc)
             return requirement, RequirementJudgment(
                 reasoning="Could not assess automatically.", level="gap", evidence=""
@@ -302,7 +318,7 @@ class JobFitAnalyzer:
             critique = await self._structured(
                 _CRITIC_INSTRUCTIONS, user, FitCritique, _JUDGE_TEMPERATURE
             )
-        except (ValidationError, ValueError, OSError) as exc:
+        except _PIPELINE_ERRORS as exc:
             logger.warning("Verifier failed: %s", exc)
             return report
         if critique.is_honest or not critique.issues:
@@ -313,7 +329,7 @@ class JobFitAnalyzer:
             return await self._synthesize(
                 parsed, band, pairs, fix_notes="\n".join(critique.issues)
             )
-        except (ValidationError, ValueError, OSError) as exc:
+        except _PIPELINE_ERRORS as exc:
             logger.warning("Regeneration failed: %s", exc)
             return report
 
@@ -321,9 +337,9 @@ class JobFitAnalyzer:
         self,
         system: str,
         user: str,
-        schema: type[BaseModel],
+        schema: type[_SchemaT],
         temperature: float,
-    ) -> BaseModel:
+    ) -> _SchemaT:
         """One structured-output call, with a json_object fallback + validation.
 
         Args:
@@ -333,12 +349,13 @@ class JobFitAnalyzer:
             temperature: Sampling temperature.
 
         Returns:
-            A validated instance of ``schema``.
+            A validated instance of the exact ``schema`` type passed in.
 
         Raises:
             ValidationError: If even the fallback output cannot be validated.
+            OpenAIError: If the fallback API call itself fails.
         """
-        messages = [
+        messages: list[ChatCompletionMessageParam] = [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ]
@@ -358,12 +375,13 @@ class JobFitAnalyzer:
             f"{system}\n\nRespond ONLY with a JSON object matching this schema:\n"
             f"{json.dumps(schema.model_json_schema())}"
         )
+        fallback_messages: list[ChatCompletionMessageParam] = [
+            {"role": "system", "content": fallback_system},
+            {"role": "user", "content": user},
+        ]
         completion = await self._client.chat.completions.create(
             model=self._model,
-            messages=[
-                {"role": "system", "content": fallback_system},
-                {"role": "user", "content": user},
-            ],
+            messages=fallback_messages,
             response_format={"type": "json_object"},
             temperature=temperature,
         )
