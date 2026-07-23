@@ -8,9 +8,9 @@ Answers George gives recruiters directly. Facts here are authoritative.
 - Notice period: one month. Can start about four weeks after an offer.
 - Consulting engagements stop for a full-time role — the goal is to go deep on one hard problem with a strong team.
 
-## Why looking for a new role
+## Why looking for a new role (and why part-time at Predictive Fitness)
 
-Predictive Fitness scaled the role down to part time, which is part of why George is looking for full time. He is still there and still shipping. He wants a full-time senior role with real end-to-end ownership, technically hard problems, and a senior team.
+George's full-time engagement with Predictive Fitness ran four years (May 2022 - May 2026); since May 2026 he continues with them part-time. The company's focus has shifted more toward frontend work, while George's strength is the backend, data, and ML side. It has been a great collaboration — he is still there and still shipping — and it is part of why he is now looking for a full-time senior role with real end-to-end ownership, technically hard problems, and a senior team.
 
 ## Location, remote work, and timezone
 
