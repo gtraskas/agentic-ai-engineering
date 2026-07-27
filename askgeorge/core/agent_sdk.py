@@ -9,10 +9,17 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
-from agents import Agent, ModelSettings, OpenAIChatCompletionsModel, Runner, function_tool
-from agents import set_tracing_disabled
+from agents import (
+    Agent,
+    ModelSettings,
+    OpenAIChatCompletionsModel,
+    Runner,
+    function_tool,
+    set_tracing_disabled,
+)
 from agents.exceptions import InputGuardrailTripwireTriggered
 from openai import AsyncOpenAI
 from openai.types.responses import ResponseCreatedEvent, ResponseTextDeltaEvent
@@ -44,7 +51,7 @@ class SdkAgent:
     ) -> None:
         api_key = os.getenv("OPENROUTER_API_KEY")
         if not api_key:
-            raise EnvironmentError("Set OPENROUTER_API_KEY to run AskGeorge.")
+            raise OSError("Set OPENROUTER_API_KEY to run AskGeorge.")
         set_tracing_disabled(True)
         self._knowledge = knowledge
         model = OpenAIChatCompletionsModel(

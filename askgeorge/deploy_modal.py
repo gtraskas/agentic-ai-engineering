@@ -55,7 +55,7 @@ image = (
 )
 @modal.concurrent(max_inputs=100)
 @modal.asgi_app()
-def web() -> "FastAPI":  # noqa: F821 — imported inside the Modal container
+def web() -> FastAPI:  # noqa: F821 — imported inside the Modal container
     """Serve the Gradio chat UI as an ASGI app on Modal."""
     import gradio as gr
     from fastapi import FastAPI

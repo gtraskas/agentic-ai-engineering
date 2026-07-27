@@ -17,7 +17,8 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-from typing import AsyncIterator, Literal, TypeVar
+from collections.abc import AsyncIterator
+from typing import Literal, TypeVar
 
 from openai import AsyncOpenAI, OpenAIError
 from openai.types.chat import ChatCompletionMessageParam
@@ -177,7 +178,7 @@ class JobFitAnalyzer:
     ) -> None:
         api_key = openrouter_api_key()
         if client is None and not api_key:
-            raise EnvironmentError("Set OPENROUTER_API_KEY to run job-fit analysis.")
+            raise OSError("Set OPENROUTER_API_KEY to run job-fit analysis.")
         self._client = client or AsyncOpenAI(
             base_url=OPENROUTER_BASE_URL, api_key=api_key
         )

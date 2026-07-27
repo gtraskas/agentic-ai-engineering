@@ -9,7 +9,8 @@ from __future__ import annotations
 import json
 import logging
 import os
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from openai import OpenAI
 
@@ -40,7 +41,7 @@ class ScratchAgent:
     ) -> None:
         api_key = os.getenv("OPENROUTER_API_KEY")
         if client is None and not api_key:
-            raise EnvironmentError("Set OPENROUTER_API_KEY to run AskGeorge.")
+            raise OSError("Set OPENROUTER_API_KEY to run AskGeorge.")
         self._client = client or OpenAI(base_url=OPENROUTER_BASE_URL, api_key=api_key)
         self._model = chat_model()
         self._knowledge = knowledge

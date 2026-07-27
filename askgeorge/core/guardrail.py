@@ -76,7 +76,7 @@ def _latest_visitor_text(guardrail_input: object) -> str:
             if isinstance(item, dict) and item.get("role") == "user"
         ]
         text = user_texts[-1] if user_texts else ""
-    return re.sub(r"<retrieved_background>.*</retrieved_background>", "", text, flags=re.S).strip()
+    return re.sub(r"<retrieved_background>.*</retrieved_background>", "", text, flags=re.DOTALL).strip()
 
 
 def build_scope_guardrail(model: object) -> object:

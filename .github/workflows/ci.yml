@@ -19,7 +19,7 @@ jobs:
         run: uv sync
 
       - name: Ruff lint
-        run: uv run ruff check askgeorge/ || uvx ruff check askgeorge/
+        run: uv run ruff check askgeorge/
 
       - name: Smoke test (build the app without network or RAG)
         env:
