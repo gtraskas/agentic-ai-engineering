@@ -5,25 +5,19 @@ where "crews" of role-playing agents collaborate on a sequence of tasks. Agents
 and tasks are declared in YAML, and a small Python class wires them together —
 most of the behaviour lives in prompts, not code.
 
-## Setup — nothing installed globally
+## Setup
 
-Each crew in this folder is a **self-contained uv project** with its own
-`pyproject.toml`, lockfile and `.venv`. The `crewai` library is installed only
-inside the crew's folder — the repo root environment and your machine stay
-untouched. Deleting a crew's folder removes every trace of it.
+Each crew in this folder is a self-contained [uv](https://docs.astral.sh/uv/)
+project with its own `pyproject.toml`, lockfile and `.venv`, independent of the
+repo root environment. The `crewai` CLI is not required: `crewai run` is a
+wrapper around the project's own entry script, so `uv run` does the same job.
 
-There is no need for the `crewai` CLI: `crewai run` is just a wrapper around
-the project's own entry script, so `uv run` does the same job.
-
-To set up any crew:
+To set up a crew:
 
 ```bash
 cd crewai/debate
 uv sync
 ```
-
-Note: `crewai[tools]` has a heavy dependency tree, so the crew's local `.venv`
-runs to a few hundred MB.
 
 API keys are read from the repo-root `.env` (gitignored). The crews here use
 OpenAI, so `OPENAI_API_KEY` must be set there.
