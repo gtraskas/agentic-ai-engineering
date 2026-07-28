@@ -19,3 +19,8 @@ dependencies = [
 dev = [
     "ruff==0.16.0",
 ]
+
+[tool.ruff.lint.isort]
+# The crewai/ folder holds CrewAI projects; the name must not make ruff
+# mistake the third-party `crewai` package for first-party code.
+known-third-party = ["crewai"]
