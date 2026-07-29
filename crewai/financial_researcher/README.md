@@ -1,17 +1,25 @@
 # Financial researcher crew
 
 A two-stage research pipeline: a researcher gathers current information on a
-company, an analyst turns it into a structured report. Demonstrates agent
-tools and task context passing.
+company, an analyst turns it into a structured report.
+
+## Demonstrates
+
+- **Agent tools** — the researcher carries a web-search tool
+  (`SerperDevTool`), attached only when its API key is present, so the crew
+  degrades gracefully instead of failing.
+- **Task context passing** — the analysis task declares
+  `context: [research_task]`, receiving the researcher's findings as input.
+- **Runtime inputs** — `{company}` and `{current_date}` are interpolated
+  into every prompt from the `kickoff()` inputs.
 
 | Task | Agent | Writes |
 | --- | --- | --- |
 | research_task | researcher | — (feeds the next task) |
 | analysis_task | analyst | `output/report.md` |
 
-The analysis task declares `context: [research_task]` in the YAML, so the
-analyst receives the researcher's findings as input. The report opens with an
-executive summary and is explicitly not investment advice.
+The report opens with an executive summary and is explicitly not investment
+advice.
 
 ## Run
 
@@ -20,8 +28,7 @@ uv sync
 uv run financial_researcher "NVIDIA"
 ```
 
-With no argument a default company is used. The company name and the current
-date are runtime inputs interpolated into every prompt.
+With no argument a default company is used.
 
 Requires `OPENAI_API_KEY` in the repo-root `.env` — see
 [../README.md](../README.md) for shared setup. With `SERPER_API_KEY`

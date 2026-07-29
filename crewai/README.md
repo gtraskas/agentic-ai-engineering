@@ -14,8 +14,13 @@ most of the behaviour lives in prompts, not code.
   current information on a company (live web search when a key is set) and
   an analyst turns it into a structured report. Adds agent tools, task
   context passing, and runtime inputs.
+- **[stock_picker](stock_picker/)** — a manager agent delegates finding,
+  researching and picking a trending company in a sector. Adds hierarchical
+  process, structured Pydantic outputs, a custom notification tool, and
+  persistent memory.
 
-Each crew's README covers what it does and how to run it.
+Each crew's README covers what it does, what it demonstrates, and how to
+run it.
 
 ## Setup
 

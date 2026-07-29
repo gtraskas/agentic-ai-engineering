@@ -1,0 +1,18 @@
+[project]
+name = "stock_picker"
+version = "0.1.0"
+description = "Hierarchical crew: find trending companies, research them, pick one, notify"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "crewai[tools]==1.14.4",
+]
+
+[project.scripts]
+stock_picker = "stock_picker.main:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.crewai]
+type = "crew"

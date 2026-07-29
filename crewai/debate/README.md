@@ -3,6 +3,16 @@
 Two agents, three sequential tasks: a debater argues both sides of a motion,
 then a judge picks the winner on the merits of the arguments alone.
 
+## Demonstrates
+
+- **YAML-declared agents and tasks** — role, goal, backstory and task
+  descriptions live in config files; the Python class only wires them up.
+- **Sequential process** — tasks run in declaration order, each seeing the
+  output of the ones before it.
+- **Task output files** — every task writes its result to `output/*.md`.
+- **Runtime inputs** — the `{motion}` placeholder is interpolated into every
+  prompt from the `kickoff()` inputs.
+
 | Task | Agent | Writes |
 | --- | --- | --- |
 | propose | debater | `output/propose.md` |

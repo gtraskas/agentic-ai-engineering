@@ -1,0 +1,12 @@
+# Environment
+.env
+.venv
+
+# Python
+__pycache__/
+
+# Crew memory (short/long-term stores created at run time)
+memory/
+
+# macOS
+.DS_Store
