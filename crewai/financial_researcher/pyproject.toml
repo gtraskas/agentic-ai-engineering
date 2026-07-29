@@ -1,0 +1,18 @@
+[project]
+name = "financial_researcher"
+version = "0.1.0"
+description = "Two-stage research crew: web research on a company, then an analyst report"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "crewai[tools]==1.14.4",
+]
+
+[project.scripts]
+financial_researcher = "financial_researcher.main:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.crewai]
+type = "crew"

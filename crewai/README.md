@@ -20,7 +20,9 @@ uv sync
 ```
 
 API keys are read from the repo-root `.env` (gitignored). The crews here use
-OpenAI, so `OPENAI_API_KEY` must be set there.
+OpenAI, so `OPENAI_API_KEY` must be set there. `SERPER_API_KEY`
+([serper.dev](https://serper.dev/), free tier) is optional and enables live
+web search where a crew supports it.
 
 ## Anatomy of a crew
 
@@ -58,6 +60,25 @@ uv run debate "Remote work makes engineering teams more productive"
 
 With no argument a default motion is used. One run makes three
 `gpt-5.4-mini` calls.
+
+### financial_researcher
+
+A two-stage pipeline showing tools and task context passing.
+
+- A **researcher** gathers current information on a company — using live web
+  search (`SerperDevTool`) when `SERPER_API_KEY` is set, or the model's own
+  knowledge otherwise (the report is then not current).
+- An **analyst** receives the research through the task's `context`
+  declaration and writes a structured report — executive summary, analysis,
+  outlook — to `output/report.md`. The report is explicitly not investment
+  advice.
+
+```bash
+cd crewai/financial_researcher
+uv run financial_researcher "NVIDIA"
+```
+
+With no argument a default company is used.
 
 ## Adding a new crew
 
