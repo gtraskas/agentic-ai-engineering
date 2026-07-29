@@ -1,0 +1,12 @@
+# Environment
+.env
+.venv
+
+# Python
+__pycache__/
+
+# Agent workspace: wiped and rebuilt on every run
+sandbox/
+
+# macOS
+.DS_Store

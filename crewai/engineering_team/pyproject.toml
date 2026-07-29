@@ -1,0 +1,25 @@
+[project]
+name = "engineering_team"
+version = "0.1.0"
+description = "Four-agent engineering team: design, build, test and demo a system in a sandbox"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "crewai[tools]==1.14.4",
+]
+
+[project.scripts]
+engineering_team = "engineering_team.main:run"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.crewai]
+type = "crew"
+
+[tool.uv.workspace]
+# The sandbox is a throwaway project the agents rebuild on every run, with its
+# own Python version and dependencies. Excluding it keeps uv from adopting it
+# into this project's workspace.
+members = []
+exclude = ["sandbox"]

@@ -18,6 +18,10 @@ most of the behaviour lives in prompts, not code.
   researching and picking a trending company in a sector. Adds hierarchical
   process, structured Pydantic outputs, a custom notification tool, and
   persistent memory.
+- **[engineering_team](engineering_team/)** — four agents design, build,
+  demo and test a working system from a paragraph of requirements. Adds
+  sandboxed code execution in Docker, MCP tools for live documentation, and
+  a different model for the lead than for the engineers. Requires Docker.
 
 Each crew's README covers what it does, what it demonstrates, and how to
 run it.
