@@ -5,12 +5,24 @@ where "crews" of role-playing agents collaborate on a sequence of tasks. Agents
 and tasks are declared in YAML, and a small Python class wires them together —
 most of the behaviour lives in prompts, not code.
 
+## Crews
+
+- **[debate](debate/)** — a debater argues both sides of a motion; a judge
+  picks the winner on the merits alone. The smallest useful crew: YAML
+  agents, sequential tasks, output files.
+- **[financial_researcher](financial_researcher/)** — a researcher gathers
+  current information on a company (live web search when a key is set) and
+  an analyst turns it into a structured report. Adds agent tools, task
+  context passing, and runtime inputs.
+
+Each crew's README covers what it does and how to run it.
+
 ## Setup
 
-Each crew in this folder is a self-contained [uv](https://docs.astral.sh/uv/)
-project with its own `pyproject.toml`, lockfile and `.venv`, independent of the
-repo root environment. The `crewai` CLI is not required: `crewai run` is a
-wrapper around the project's own entry script, so `uv run` does the same job.
+Each crew is a self-contained [uv](https://docs.astral.sh/uv/) project with
+its own `pyproject.toml`, lockfile and `.venv`, independent of the repo root
+environment. The `crewai` CLI is not required: `crewai run` is a wrapper
+around the project's own entry script, so `uv run` does the same job.
 
 To set up a crew:
 
@@ -39,46 +51,6 @@ debate/
 
 `{placeholders}` in the YAML are filled from the `inputs` dict passed to
 `kickoff()` — that is how the same crew runs on any topic.
-
-## Crews
-
-### debate
-
-The smallest useful crew: two agents, three sequential tasks.
-
-- A **debater** argues *for* a motion (`propose`), then argues *against* the
-  same motion (`oppose`) — the same agent takes both sides.
-- A **judge** reads both arguments and declares a winner on the merits alone
-  (`decide`).
-
-Each task writes its result to `output/*.md`.
-
-```bash
-cd crewai/debate
-uv run debate "Remote work makes engineering teams more productive"
-```
-
-With no argument a default motion is used. One run makes three
-`gpt-5.4-mini` calls.
-
-### financial_researcher
-
-A two-stage pipeline showing tools and task context passing.
-
-- A **researcher** gathers current information on a company — using live web
-  search (`SerperDevTool`) when `SERPER_API_KEY` is set, or the model's own
-  knowledge otherwise (the report is then not current).
-- An **analyst** receives the research through the task's `context`
-  declaration and writes a structured report — executive summary, analysis,
-  outlook — to `output/report.md`. The report is explicitly not investment
-  advice.
-
-```bash
-cd crewai/financial_researcher
-uv run financial_researcher "NVIDIA"
-```
-
-With no argument a default company is used.
 
 ## Adding a new crew
 
