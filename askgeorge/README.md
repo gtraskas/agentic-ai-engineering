@@ -37,7 +37,42 @@ tests/
 - **Rate limiting:** in-memory sliding windows — 15 messages/hour per visitor, 100/day globally — with polite first-person refusals
 - **Job-fit analysis:** a dedicated tab where a recruiter pastes a job description; a structured pipeline (parse → per-requirement RAG judgment via `asyncio.gather` → deterministic band → synthesis → anti-flattery verifier) returns an honest, evidence-backed fit report and emails George each run. The description is treated as untrusted input
 - **RAG:** hybrid dense + sparse (BM25) retrieval, embedded locally with FastEmbed and fused in `QdrantClient(":memory:")`; heading-aware chunking; the summary stays pinned in the prompt; a retrieval golden-set eval gates every CI run
-- **UI:** Gradio Blocks with a custom Aegean Minimal theme; drop your photo at `ui/assets/photo.jpg` and resumes at `ui/assets/cv_ai_ml_engineer.pdf` / `ui/assets/cv_data_scientist.pdf` to enable the header portrait and per-role Download CV buttons
+- **UI:** Gradio Blocks with a custom Aegean Minimal theme; the header portrait and the per-role Download CV buttons appear when `ui/assets/` holds `photo.jpg` and the two CV PDFs named in [`ui/theme.py`](ui/theme.py)
+
+## Design decisions
+
+The reasoning behind the parts that are not obvious from the code.
+
+- **In-memory Qdrant instead of a hosted vector database.** The corpus is a handful of
+  Markdown files and static between deployments, and the app scales to zero — an
+  always-on database would cost money to sit idle. Rebuilding the index in RAM at
+  container start takes seconds and leaves nothing to operate or secure.
+- **The job-fit score is computed in code, not by the model.** The pipeline parses the
+  job description into typed requirements, judges each one against retrieved evidence
+  concurrently, then derives the overall band deterministically in Python — so a
+  must-have gap can never be rendered as a strong fit. A final anti-flattery pass
+  regenerates the report if it overclaims.
+- **A retrieval eval gates every deploy.** 23 recruiter-style questions each assert an
+  expected fact appears in the retrieved context. Any corpus or chunking change that
+  silently breaks recall fails the build instead of reaching visitors.
+- **The guardrail is a parallel judge, not a preflight check.** The scope check runs
+  concurrently with answer generation, so legitimate visitors pay no latency; the
+  tripwire cancels generation only when the judge rejects. It reads the visitor's raw
+  message from the run context rather than reconstructing it from the augmented prompt,
+  which would let a visitor shrink the judged text and slip past.
+- **Hybrid dense and sparse retrieval.** Dense embeddings catch meaning; a local BM25
+  model catches exact terms like tool names and acronyms. Chunks carry their Markdown
+  heading path, so retrieval matches on section context rather than body text alone.
+- **Embeddings run locally.** FastEmbed inside the container means no API call and no
+  per-query cost at question time; the model is baked into the image so cold starts
+  skip the download.
+- **Two agent backends on purpose.** The from-scratch streaming tool-calling loop shows
+  what a framework abstracts — delta assembly, tool rounds, safety caps — and the
+  Agents SDK version delivers the same behaviour in a tenth of the code. Build the
+  baseline, then let the abstraction earn its place.
+- **Grounding instead of server-side memory.** The model answers only from retrieved
+  background; conversation history is replayed from the browser each turn. The correct
+  stateless pattern for serverless, and immune to container restarts.
 
 ## Run locally
 

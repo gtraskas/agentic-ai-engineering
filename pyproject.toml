@@ -1,7 +1,7 @@
 [project]
 name = "agentic-ai-engineering"
 version = "0.1.0"
-description = "Add your description here"
+description = "Production agentic AI systems: retrieval-grounded assistants and multi-agent crews"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

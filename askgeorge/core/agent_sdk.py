@@ -87,7 +87,9 @@ class SdkAgent:
             *self._sanitize_history(history),
             {"role": "user", "content": augment_with_context(message, context)},
         ]
-        result = Runner.run_streamed(self._agent, input=input_items)
+        # The raw message travels as the run context so the scope guardrail can
+        # judge what the visitor actually typed, not the augmented prompt.
+        result = Runner.run_streamed(self._agent, input=input_items, context=message)
         reply = ""
         try:
             async for event in result.stream_events():

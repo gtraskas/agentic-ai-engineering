@@ -79,8 +79,15 @@ def build_system_prompt(profile: Profile) -> str:
     return f"{rules}\n# Pinned professional summary\n\n{profile.summary}"
 
 
+CONTEXT_OPEN_TAG: str = "<retrieved_background>"
+CONTEXT_CLOSE_TAG: str = "</retrieved_background>"
+
+
 def augment_with_context(message: str, context: str) -> str:
     """Attach retrieved background context to the visitor's message.
+
+    The visitor's text comes first and the background is appended after it, so
+    anything before the opening tag is the visitor's own words.
 
     Args:
         message: The visitor's raw question.
@@ -91,8 +98,8 @@ def augment_with_context(message: str, context: str) -> str:
     """
     return (
         f"{message}\n\n"
-        "<retrieved_background>\n"
+        f"{CONTEXT_OPEN_TAG}\n"
         "Background retrieved for this question (ground your answer here and "
         f"in the pinned summary):\n\n{context}\n"
-        "</retrieved_background>"
+        f"{CONTEXT_CLOSE_TAG}"
     )

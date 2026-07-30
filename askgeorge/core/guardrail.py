@@ -7,7 +7,7 @@ generation when the tripwire fires, so the happy path pays no latency.
 
 from __future__ import annotations
 
-import re
+from typing import Any
 
 from agents import (
     Agent,
@@ -16,6 +16,8 @@ from agents import (
     input_guardrail,
 )
 from pydantic import BaseModel, Field
+
+from askgeorge.core.prompts import CONTEXT_OPEN_TAG
 
 GUARDRAIL_REFUSAL: str = (
     "I'd rather keep this space about my work and experience — ask me anything "
@@ -65,8 +67,26 @@ class ScopeVerdict(BaseModel):
     )
 
 
-def _latest_visitor_text(guardrail_input: object) -> str:
-    """Extract the newest user message, without the retrieved-context block."""
+def _visitor_message(ctx: Any, guardrail_input: object) -> str:
+    """Return exactly what the visitor typed, never the retrieved background.
+
+    The message is read from the run context, which the caller sets to the raw
+    text before any background is attached. Reconstructing it from the model
+    input instead would be unsafe: a visitor who types the background tag
+    themselves could otherwise shrink the judged text to nothing and slip past
+    this guardrail entirely.
+
+    Args:
+        ctx: The SDK run context wrapper; ``ctx.context`` carries the raw message.
+        guardrail_input: The model input, used only as a fallback for callers
+            that do not supply a context.
+
+    Returns:
+        The visitor's message, or an empty string if there is nothing to judge.
+    """
+    supplied = getattr(ctx, "context", None)
+    if isinstance(supplied, str) and supplied.strip():
+        return supplied.strip()
     if isinstance(guardrail_input, str):
         text = guardrail_input
     else:
@@ -76,7 +96,11 @@ def _latest_visitor_text(guardrail_input: object) -> str:
             if isinstance(item, dict) and item.get("role") == "user"
         ]
         text = user_texts[-1] if user_texts else ""
-    return re.sub(r"<retrieved_background>.*</retrieved_background>", "", text, flags=re.DOTALL).strip()
+    # The background is always appended last, so only the final tag is ours;
+    # splitting there keeps a visitor-typed tag inside the text being judged.
+    # Never return empty while there is text: something must always be judged.
+    head = text.rsplit(CONTEXT_OPEN_TAG, 1)[0].strip()
+    return head or text.strip()
 
 
 def build_scope_guardrail(model: object) -> object:
@@ -97,7 +121,7 @@ def build_scope_guardrail(model: object) -> object:
 
     @input_guardrail
     async def scope_guardrail(ctx, agent, guardrail_input) -> GuardrailFunctionOutput:
-        message = _latest_visitor_text(guardrail_input)
+        message = _visitor_message(ctx, guardrail_input)
         if not message:
             return GuardrailFunctionOutput(output_info=None, tripwire_triggered=False)
         result = await Runner.run(judge, message)
