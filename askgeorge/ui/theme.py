@@ -787,17 +787,26 @@ def _make_responder(chat_fn: Callable[..., Any]) -> Callable[..., Any]:
     return respond_sync
 
 
-def _build_chat_panel(chat_fn: Callable[..., Any]) -> None:
+def _build_chat_panel(
+    chat_fn: Callable[..., Any],
+) -> tuple[gr.Chatbot, gr.BrowserState]:
     """Assemble the chat tab: chatbot, input, curated pills, and the expander.
 
     A custom Blocks chat rather than gr.ChatInterface: the question pills
     must submit on click, and external components cannot trigger a
-    ChatInterface submission. Four curated pills sit under the input; the
-    full catalog lives in a collapsed "More questions" accordion whose
-    instant group renders straight from the InstantFAQ catalog, so the UI
-    can never offer a question the matcher does not answer.
+    ChatInterface submission. The pills render in two columns whose instant
+    group stays in sync with the InstantFAQ catalog via the CI eval.
+
+    The conversation persists in the visitor's own browser (localStorage
+    via gr.BrowserState) — nothing is stored server-side. Each completed
+    exchange saves the history; Clear chat wipes screen and storage both.
+
+    Returns:
+        The chatbot and its browser-persisted history state, so the caller
+        can restore the conversation on page load.
     """
     respond = _make_responder(chat_fn)
+    saved_history = gr.BrowserState([], storage_key="ag-chat-history")
     chatbot = gr.Chatbot(
         layout="panel",
         show_label=False,
@@ -813,15 +822,22 @@ def _build_chat_panel(chat_fn: Callable[..., Any]) -> None:
         submit_btn=True,
         elem_id="ag-chat-input",
     )
-    textbox.submit(respond, inputs=[textbox, chatbot], outputs=[chatbot, textbox])
+
+    def _save_history(history: list | None) -> list:
+        """Persist the finished exchange to the visitor's browser."""
+        return history or []
+
+    textbox.submit(
+        respond, inputs=[textbox, chatbot], outputs=[chatbot, textbox]
+    ).then(_save_history, inputs=[chatbot], outputs=[saved_history])
     with gr.Row(elem_id="ag-chat-actions"):
         clear_button = gr.Button("Clear chat", size="sm", elem_classes="ag-clear")
 
-    def _clear_chat() -> tuple[list, str]:
-        """Wipe the conversation and the input box."""
-        return [], ""
+    def _clear_chat() -> tuple[list, str, list]:
+        """Wipe the conversation, the input box, and the stored history."""
+        return [], "", []
 
-    clear_button.click(_clear_chat, outputs=[chatbot, textbox])
+    clear_button.click(_clear_chat, outputs=[chatbot, textbox, saved_history])
 
     def _chip_handler(question: str) -> Callable[..., Any]:
         if inspect.isasyncgenfunction(respond):
@@ -846,11 +862,12 @@ def _build_chat_panel(chat_fn: Callable[..., Any]) -> None:
                     _chip_handler(question),
                     inputs=[chatbot],
                     outputs=[chatbot, textbox],
-                )
+                ).then(_save_history, inputs=[chatbot], outputs=[saved_history])
 
     with gr.Row(elem_id="ag-qcols"):
         _chip_column("Quick answers", FAQ_PILLS)
         _chip_column("Ask the AI live", LIVE_AI_QUESTIONS)
+    return chatbot, saved_history
 
 
 def build_ui(
@@ -885,7 +902,7 @@ def build_ui(
         gr.HTML(_hero_html())
         with gr.Tabs():
             with gr.Tab("Chat with me"):
-                _build_chat_panel(chat_fn)
+                chatbot, saved_history = _build_chat_panel(chat_fn)
             with gr.Tab("Analyze a job fit"):
                 job_description = gr.Textbox(
                     show_label=False,
@@ -912,4 +929,10 @@ def build_ui(
             with gr.Accordion("Book an intro call", open=False, elem_id="ag-book"):
                 gr.HTML(_booking_iframe_html(calendar_url))
         gr.HTML(_footer_html())
+
+        def _restore_history(saved: list | None) -> list:
+            """Bring the visitor's stored conversation back on page load."""
+            return saved or []
+
+        demo.load(_restore_history, inputs=[saved_history], outputs=[chatbot])
     return demo
