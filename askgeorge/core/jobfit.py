@@ -25,10 +25,10 @@ from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, Field, ValidationError
 
 from askgeorge.core.config import (
+    CHAT_MODEL,
     JOBFIT_MAX_CHARS,
     JOBFIT_MIN_CHARS,
     OPENROUTER_BASE_URL,
-    jobfit_model,
     openrouter_api_key,
     openrouter_extra_body,
 )
@@ -183,7 +183,7 @@ class JobFitAnalyzer:
         self._client = client or AsyncOpenAI(
             base_url=OPENROUTER_BASE_URL, api_key=api_key
         )
-        self._model = jobfit_model()
+        self._model = CHAT_MODEL
         self._summary = profile.summary
         self._knowledge = knowledge
         self._notifier = notifier
@@ -367,7 +367,7 @@ class JobFitAnalyzer:
                 messages=messages,
                 response_format=schema,
                 temperature=temperature,
-                extra_body=openrouter_extra_body(self._model),
+                extra_body=openrouter_extra_body(),
             )
             parsed = completion.choices[0].message.parsed
             if parsed is not None:
@@ -387,7 +387,7 @@ class JobFitAnalyzer:
             messages=fallback_messages,
             response_format={"type": "json_object"},
             temperature=temperature,
-            extra_body=openrouter_extra_body(self._model),
+            extra_body=openrouter_extra_body(),
         )
         raw = completion.choices[0].message.content or "{}"
         return schema.model_validate_json(raw)

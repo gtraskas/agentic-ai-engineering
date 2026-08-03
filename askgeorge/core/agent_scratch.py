@@ -15,11 +15,11 @@ from typing import Any
 from openai import OpenAI
 
 from askgeorge.core.config import (
+    CHAT_MODEL,
     MAX_TOOL_ROUNDS,
     OPENROUTER_BASE_URL,
-    chat_model,
+    TEMPERATURE,
     openrouter_extra_body,
-    temperature,
 )
 from askgeorge.core.knowledge import BackgroundKnowledge
 from askgeorge.core.profile import Profile
@@ -43,7 +43,7 @@ class ScratchAgent:
         if client is None and not api_key:
             raise OSError("Set OPENROUTER_API_KEY to run AskGeorge.")
         self._client = client or OpenAI(base_url=OPENROUTER_BASE_URL, api_key=api_key)
-        self._model = chat_model()
+        self._model = CHAT_MODEL
         self._knowledge = knowledge
         self._dispatcher = dispatcher
         self._system_prompt = build_system_prompt(profile)
@@ -71,8 +71,8 @@ class ScratchAgent:
                 messages=messages,
                 tools=self._dispatcher.schemas(),
                 stream=True,
-                temperature=temperature(),
-                extra_body=openrouter_extra_body(self._model),
+                temperature=TEMPERATURE,
+                extra_body=openrouter_extra_body(),
             )
             for chunk in stream:
                 if not chunk.choices:

@@ -25,11 +25,10 @@ from openai import AsyncOpenAI
 from openai.types.responses import ResponseCreatedEvent, ResponseTextDeltaEvent
 
 from askgeorge.core.config import (
+    CHAT_MODEL,
     OPENROUTER_BASE_URL,
-    chat_model,
-    guardrail_enabled,
+    TEMPERATURE,
     openrouter_extra_body,
-    temperature,
 )
 from askgeorge.core.guardrail import GUARDRAIL_REFUSAL, build_scope_guardrail
 from askgeorge.core.knowledge import BackgroundKnowledge
@@ -55,19 +54,18 @@ class SdkAgent:
         set_tracing_disabled(True)
         self._knowledge = knowledge
         model = OpenAIChatCompletionsModel(
-            model=chat_model(),
+            model=CHAT_MODEL,
             openai_client=AsyncOpenAI(base_url=OPENROUTER_BASE_URL, api_key=api_key),
         )
-        guardrails = [build_scope_guardrail(model)] if guardrail_enabled() else []
         self._agent = Agent(
             name="AskGeorge",
             instructions=build_system_prompt(profile),
             model=model,
             model_settings=ModelSettings(
-                temperature=temperature(), extra_body=openrouter_extra_body()
+                temperature=TEMPERATURE, extra_body=openrouter_extra_body()
             ),
             tools=self._build_tools(dispatcher),
-            input_guardrails=guardrails,
+            input_guardrails=[build_scope_guardrail(model)],
         )
 
     async def chat(

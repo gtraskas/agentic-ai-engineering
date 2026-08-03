@@ -33,9 +33,9 @@ tests/
 └── instant_eval.py         # instant-FAQ matcher eval, gates every CI run
 ```
 
-- **LLM:** any model via [OpenRouter](https://openrouter.ai) — default `google/gemini-3.1-flash-lite` (fast, consistent, ~$0.10/M input; pennies per day under the global rate cap) with reasoning effort capped at `low` for fast first tokens; switch anytime with `OPENROUTER_MODEL` / `ASKGEORGE_REASONING`. Every call carries an OpenRouter server-side fallback chain to the best free model from the benchmark (`OPENROUTER_FALLBACK_MODEL`, default `google/gemma-4-26b-a4b-it:free`), so a paid-model outage degrades to free instead of failing
+- **LLM:** any model via [OpenRouter](https://openrouter.ai) — `google/gemini-3.1-flash-lite` (fast, consistent, ~$0.10/M input; pennies per day under the global rate cap) with reasoning effort capped at `low` for fast first tokens. Every call carries an OpenRouter server-side fallback chain to the best free model from the benchmark (`google/gemma-4-26b-a4b-it:free`), so a paid-model outage degrades to free instead of failing. Both model ids are constants in [`core/config.py`](core/config.py)
 - **Two switchable agent backends:** a from-scratch tool-calling loop and the OpenAI Agents SDK (`AGENT_BACKEND=scratch|sdk`)
-- **Input guardrail (SDK backend):** a parallel judge LLM with a Pydantic verdict blocks off-topic, dangerous, and prompt-injection messages before they reach the main agent (`ASKGEORGE_GUARDRAIL=0` to disable)
+- **Input guardrail (SDK backend):** a parallel judge LLM with a Pydantic verdict blocks off-topic, dangerous, and prompt-injection messages before they reach the main agent
 - **Rate limiting:** in-memory sliding windows — 15 messages/hour per visitor, 100/day globally — with polite first-person refusals
 - **Instant FAQ answers:** the most common recruiter questions return a curated first-person reply immediately — no retrieval, no model call, no API cost — and don't consume the visitor's rate-limit budget. Matching is conservative (normalized exact + high-bar fuzzy), and a two-sided eval in CI guards against both misses and false positives
 - **Question pills:** two columns under the chat input — "Quick answers" (five instant-FAQ questions) and "Ask the AI live" (five retrieval-golden-set questions that demonstrate the RAG + LLM pipeline). One click submits the question, and the CI eval asserts every FAQ pill has an instant answer and every live pill reaches the model
@@ -111,14 +111,8 @@ Every push runs lint + smoke tests via GitHub Actions; pushes to `master` auto-d
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `OPENROUTER_API_KEY` | yes | OpenRouter API key (openrouter.ai/keys) |
-| `OPENROUTER_MODEL` | no | Override the chat model (default `google/gemini-3.1-flash-lite`) |
-| `OPENROUTER_FALLBACK_MODEL` | no | Override the fallback model (default `google/gemma-4-26b-a4b-it:free`) |
-| `JOBFIT_MODEL` | no | Override the job-fit model (defaults to the chat model) |
-| `ASKGEORGE_REASONING` | no | Reasoning effort for thinking models (default `low`; e.g. `medium`, `high`) |
 | `AGENT_BACKEND` | no | `sdk` (default, OpenAI Agents SDK) or `scratch` (from-scratch loop) |
 | `ASKGEORGE_RAG` | no | Set `0` to disable RAG and pass the full corpus in context |
-| `ASKGEORGE_GUARDRAIL` | no | Set `0` to disable the input guardrail (on by default) |
-| `ASKGEORGE_TEMPERATURE` | no | Sampling temperature (default `0.7`) |
 | `GMAIL_ADDRESS` | no | Gmail address that sends and receives notifications |
 | `GMAIL_APP_PASSWORD` | no | Gmail App Password (Google Account → Security → 2-Step Verification → App passwords) |
 | `CALENDAR_BOOKING_URL` | no | Google Calendar booking-page link; enables the embedded booking calendar |
