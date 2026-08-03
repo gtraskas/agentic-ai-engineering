@@ -13,6 +13,7 @@ askgeorge/
 ├── core/
 │   ├── config.py           # paths, models, env accessors
 │   ├── profile.py          # background corpus loading
+│   ├── instant.py          # instant FAQ answers (no LLM call)
 │   ├── knowledge.py        # hybrid BM25+dense RAG in Qdrant (:memory:), FastEmbed
 │   ├── prompts.py          # system prompt + per-question context injection
 │   ├── jobfit.py           # structured job-fit pipeline (parse/judge/synth/verify)
@@ -28,13 +29,15 @@ askgeorge/
 └── me/                     # knowledge base (markdown)
 
 tests/
-└── retrieval_eval.py       # golden-set retrieval eval, gates every CI run
+├── retrieval_eval.py       # golden-set retrieval eval, gates every CI run
+└── instant_eval.py         # instant-FAQ matcher eval, gates every CI run
 ```
 
 - **LLM:** any model via [OpenRouter](https://openrouter.ai) — default `google/gemini-3.1-flash-lite` with reasoning effort capped at `low` for fast first tokens; switch anytime with `OPENROUTER_MODEL` / `ASKGEORGE_REASONING`
 - **Two switchable agent backends:** a from-scratch tool-calling loop and the OpenAI Agents SDK (`AGENT_BACKEND=scratch|sdk`)
 - **Input guardrail (SDK backend):** a parallel judge LLM with a Pydantic verdict blocks off-topic, dangerous, and prompt-injection messages before they reach the main agent (`ASKGEORGE_GUARDRAIL=0` to disable)
 - **Rate limiting:** in-memory sliding windows — 15 messages/hour per visitor, 100/day globally — with polite first-person refusals
+- **Instant FAQ answers:** the most common recruiter questions (the example chips, availability, contact) return a curated first-person reply immediately — no retrieval, no model call, no API cost — and don't consume the visitor's rate-limit budget. Matching is conservative (normalized exact + high-bar fuzzy), and a two-sided eval in CI guards against both misses and false positives
 - **Job-fit analysis:** a dedicated tab where a recruiter pastes a job description; a structured pipeline (parse → per-requirement RAG judgment via `asyncio.gather` → deterministic band → synthesis → anti-flattery verifier) returns an honest, evidence-backed fit report and emails George each run. The description is treated as untrusted input
 - **RAG:** hybrid dense + sparse (BM25) retrieval, embedded locally with FastEmbed and fused in `QdrantClient(":memory:")`; heading-aware chunking; the summary stays pinned in the prompt; a retrieval golden-set eval gates every CI run
 - **UI:** Gradio Blocks with a custom Aegean Minimal theme; the header portrait and the per-role Download CV buttons appear when `ui/assets/` holds `photo.jpg` and the two CV PDFs named in [`ui/theme.py`](ui/theme.py)
@@ -70,6 +73,12 @@ The reasoning behind the parts that are not obvious from the code.
   what a framework abstracts — delta assembly, tool rounds, safety caps — and the
   Agents SDK version delivers the same behaviour in a tenth of the code. Build the
   baseline, then let the abstraction earn its place.
+- **Instant answers are matched conservatively on purpose.** Only a normalized exact
+  match or a near-identical fuzzy match (0.90 similarity) against curated trigger
+  phrasings returns a canned reply; anything else goes to the full pipeline. A canned
+  answer to a question it does not quite fit reads worse than a slower real one, so
+  the CI eval asserts pass-throughs ("Are you open to relocating?") as strictly as
+  matches.
 - **Grounding instead of server-side memory.** The model answers only from retrieved
   background; conversation history is replayed from the browser each turn. The correct
   stateless pattern for serverless, and immune to container restarts.

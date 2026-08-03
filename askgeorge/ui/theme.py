@@ -16,6 +16,7 @@ from typing import Any
 import gradio as gr
 
 from askgeorge.core.config import ASSETS_DIR, booking_url
+from askgeorge.core.instant import InstantFAQ
 from askgeorge.core.ratelimit import RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -471,11 +472,22 @@ def _visitor_ip(request: gr.Request | None) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _rate_limited(chat_fn: Callable[..., Any], limiter: RateLimiter) -> Callable[..., Any]:
-    """Wrap the chat function so every message passes the rate limiter first."""
+def _wrap_chat(
+    chat_fn: Callable[..., Any], limiter: RateLimiter, instant: InstantFAQ
+) -> Callable[..., Any]:
+    """Wrap the chat function with instant answers and rate limiting.
+
+    Instant FAQ matches are checked first and served immediately — they cost
+    nothing, so they bypass the rate limiter and never consume a visitor's
+    message budget. Everything else passes the limiter, then the agent.
+    """
     if inspect.isasyncgenfunction(chat_fn):
 
         async def async_wrapper(message: str, history: list, request: gr.Request):
+            instant_reply = instant.match(message)
+            if instant_reply:
+                yield instant_reply
+                return
             refusal = limiter.check(_visitor_ip(request))
             if refusal:
                 yield refusal
@@ -486,6 +498,10 @@ def _rate_limited(chat_fn: Callable[..., Any], limiter: RateLimiter) -> Callable
         return async_wrapper
 
     def sync_wrapper(message: str, history: list, request: gr.Request):
+        instant_reply = instant.match(message)
+        if instant_reply:
+            yield instant_reply
+            return
         refusal = limiter.check(_visitor_ip(request))
         if refusal:
             yield refusal
@@ -536,7 +552,7 @@ def build_ui(
         A :class:`gr.Blocks` page; serve it with :func:`serve_kwargs` applied.
     """
     limiter = RateLimiter()
-    chat_fn = _rate_limited(chat_fn, limiter)
+    chat_fn = _wrap_chat(chat_fn, limiter, InstantFAQ())
     jobfit_handler = _jobfit_handler(jobfit_fn, limiter)
     available_cvs = [
         (label, ASSETS_DIR / filename)
@@ -566,6 +582,7 @@ def build_ui(
                         "Why should we hire you as an AI engineer?",
                         "What do your clients say about working with you?",
                         "Are you open to remote roles?",
+                        "What is your availability and notice period?",
                     ],
                 )
             with gr.Tab("Analyze a job fit"):
