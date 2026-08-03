@@ -134,6 +134,20 @@ footer {{
 }}
 #ag-topbar .ag-grow {{
     flex: 1 1 auto !important;
+    overflow: hidden;
+}}
+/* Gradio wraps input components in a .form block with its own chrome */
+#ag-topbar .form {{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    flex: 0 0 auto !important;
+    width: 140px !important;
+    min-width: 0 !important;
+}}
+#ag-topbar #ag-name-input {{
+    width: 140px !important;
+    padding: 0 !important;
 }}
 #ag-topbar .ag-wordmark {{
     font-size: 1.05rem;
@@ -144,13 +158,15 @@ footer {{
     white-space: nowrap;
 }}
 #ag-topbar .ag-tagline {{
-    font-size: 0.66rem;
+    font-size: 0.62rem;
     font-weight: 600;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--ag-subtle);
     margin: 2px 0 0 0;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }}
 #ag-hero .ag-status {{
     font-size: 0.68rem;
@@ -161,11 +177,11 @@ footer {{
     margin: 18px 0 0 0;
 }}
 #ag-topbar a.ag-link {{
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 600;
     color: var(--ag-muted);
     text-decoration: none;
-    margin-left: 12px;
+    margin-left: 6px;
     white-space: nowrap;
 }}
 #ag-topbar a.ag-link:hover {{
@@ -174,13 +190,13 @@ footer {{
 #ag-topbar button.ag-cv {{
     width: auto;
     flex: 0 0 auto;
-    font-size: 0.78rem !important;
+    font-size: 0.76rem !important;
     font-weight: 600 !important;
     color: var(--ag-muted) !important;
     background: transparent !important;
     border: 1px solid var(--ag-border) !important;
     border-radius: 999px !important;
-    padding: 4px 12px !important;
+    padding: 3px 10px !important;
     box-shadow: none !important;
 }}
 #ag-topbar button.ag-cv:hover {{
@@ -239,36 +255,53 @@ footer {{
     margin: 0 auto;
     line-height: 1.55;
 }}
-/* ---------- Onboarding hint: dismissible, remembered in the browser ---------- */
+/* ---------- Onboarding tip: small card, remembered in the browser ---------- */
 #ag-hint {{
     display: none; /* agInitHint shows it unless previously dismissed */
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
     width: fit-content;
-    max-width: 92%;
-    margin: 16px auto 0 auto;
-    padding: 7px 9px 7px 16px;
-    background: var(--ag-accent-soft);
-    border: 1px solid var(--ag-accent);
-    border-radius: 999px;
-    font-size: 0.82rem;
+    max-width: 360px;
+    margin: 18px auto 0 auto;
+    padding: 14px 16px 12px 16px;
+    background: var(--ag-surface);
+    border: 1px solid var(--ag-border);
+    border-radius: 14px;
+    box-shadow: 0 6px 24px var(--ag-shadow);
+    text-align: left;
+}}
+#ag-hint .ag-hint-eyebrow {{
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ag-accent);
+    margin: 0;
+}}
+#ag-hint .ag-hint-text {{
+    font-size: 0.84rem;
+    line-height: 1.5;
     color: var(--ag-body);
+    margin: 0;
 }}
 #ag-hint b {{
-    color: var(--ag-accent-strong);
+    color: var(--ag-ink);
 }}
-#ag-hint button {{
+#ag-hint .ag-hint-btn {{
     cursor: pointer;
-    background: transparent;
+    align-self: flex-end;
+    background: var(--ag-accent);
+    color: #FFFFFF;
     border: none;
-    color: var(--ag-muted);
-    font-size: 0.85rem;
-    line-height: 1;
-    padding: 4px 6px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 6px 16px;
+    transition: filter 0.15s ease;
 }}
-#ag-hint button:hover {{
-    color: var(--ag-accent);
+#ag-hint .ag-hint-btn:hover {{
+    filter: brightness(1.08);
 }}
 /* ---------- Tabs: minimal centered switch ----------
    No width override: Gradio 6 measures the tablist for its overflow
@@ -360,32 +393,46 @@ footer {{
     padding: 4px 8px;
     white-space: nowrap;
 }}
-/* ---------- Input row: optional name + message ---------- */
-#ag-input-row {{
-    gap: 10px;
-    align-items: stretch;
-}}
-#ag-chat-input, #ag-name-input {{
+/* ---------- Input ---------- */
+#ag-chat-input {{
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
 }}
-#ag-chat-input .input-container, #ag-name-input .input-container {{
+#ag-chat-input .input-container {{
     background: var(--ag-surface) !important;
     border: 1px solid var(--ag-border) !important;
     border-radius: 16px !important;
     box-shadow: 0 2px 10px var(--ag-shadow) !important;
 }}
-#ag-chat-input textarea, #ag-name-input textarea {{
+#ag-chat-input textarea {{
     background: transparent !important;
     color: var(--ag-ink) !important;
     padding: 13px 16px !important;
 }}
-#ag-chat-input textarea::placeholder, #ag-name-input textarea::placeholder {{
+#ag-chat-input textarea::placeholder {{
     color: var(--ag-subtle) !important;
 }}
-#ag-name-input textarea {{
-    font-size: 0.85rem !important;
+/* Compact visitor-name field in the top bar, styled like the CV pills */
+#ag-name-input {{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}}
+#ag-name-input .input-container {{
+    background: transparent !important;
+    border: 1px solid var(--ag-border) !important;
+    border-radius: 999px !important;
+    box-shadow: none !important;
+}}
+#ag-name-input input, #ag-name-input textarea {{
+    background: transparent !important;
+    color: var(--ag-ink) !important;
+    font-size: 0.78rem !important;
+    padding: 5px 14px !important;
+}}
+#ag-name-input input::placeholder, #ag-name-input textarea::placeholder {{
+    color: var(--ag-subtle) !important;
 }}
 #ag-chat-input button.submit-button {{
     background: var(--ag-accent) !important;
@@ -638,7 +685,7 @@ def _topbar_left_html() -> str:
     return """
     <div>
         <p class="ag-wordmark">George Traskas</p>
-        <p class="ag-tagline">Data Scientist · AI/ML Engineer</p>
+        <p class="ag-tagline">AI/ML · Data Science</p>
     </div>
     """
 
@@ -864,8 +911,8 @@ def _make_responder(chat_fn: Callable[..., Any]) -> Callable[..., Any]:
 
 
 def _build_chat_panel(
-    chat_fn: Callable[..., Any],
-) -> tuple[gr.Chatbot, gr.BrowserState, gr.Textbox, gr.BrowserState]:
+    chat_fn: Callable[..., Any], name_box: gr.Textbox
+) -> tuple[gr.Chatbot, gr.BrowserState]:
     """Assemble the chat tab: chatbot, input, curated pills, and the expander.
 
     A custom Blocks chat rather than gr.ChatInterface: the question pills
@@ -877,14 +924,21 @@ def _build_chat_panel(
     via gr.BrowserState) — nothing is stored server-side. Each completed
     exchange saves the history; Clear chat wipes screen and storage both.
 
+    Args:
+        chat_fn: The wrapped chat callable.
+        name_box: The top-bar visitor-name textbox feeding every handler.
+
     Returns:
-        The chatbot, its browser-persisted history state, the visitor-name
-        textbox, and its persisted state, so the caller can restore both
-        on page load.
+        The chatbot and its browser-persisted history state, so the caller
+        can restore the conversation on page load.
     """
     respond = _make_responder(chat_fn)
-    saved_history = gr.BrowserState([], storage_key="ag-chat-history")
-    saved_name = gr.BrowserState("", storage_key="ag-visitor-name")
+    # The secret must be stable across server restarts (Modal scales to zero
+    # and restarts containers routinely); Gradio's default random secret
+    # would make every restart silently wipe visitors' saved conversations.
+    saved_history = gr.BrowserState(
+        [], storage_key="ag-chat-history", secret="askgeorge-browser-state-v1"
+    )
     chatbot = gr.Chatbot(
         layout="panel",
         show_label=False,
@@ -894,31 +948,17 @@ def _build_chat_panel(
         elem_id="ag-chat",
         placeholder=CHAT_PLACEHOLDER,
     )
-    with gr.Row(elem_id="ag-input-row"):
-        name_box = gr.Textbox(
-            placeholder="Your name",
-            show_label=False,
-            scale=0,
-            min_width=150,
-            elem_id="ag-name-input",
-        )
-        textbox = gr.Textbox(
-            placeholder="Ask about my experience, projects, or availability…",
-            show_label=False,
-            submit_btn=True,
-            scale=1,
-            elem_id="ag-chat-input",
-        )
+    textbox = gr.Textbox(
+        placeholder="Ask about my experience, projects, or availability…",
+        show_label=False,
+        submit_btn=True,
+        elem_id="ag-chat-input",
+    )
 
     def _save_history(history: list | None) -> list:
         """Persist the finished exchange to the visitor's browser."""
         return history or []
 
-    def _save_name(name: str | None) -> str:
-        """Persist the visitor's name to their browser."""
-        return _clean_name(name)
-
-    name_box.blur(_save_name, inputs=[name_box], outputs=[saved_name])
     textbox.submit(
         respond, inputs=[textbox, chatbot, name_box], outputs=[chatbot, textbox]
     ).then(_save_history, inputs=[chatbot], outputs=[saved_history])
@@ -959,7 +999,7 @@ def _build_chat_panel(
     with gr.Row(elem_id="ag-qcols"):
         _chip_column("Quick answers", FAQ_PILLS)
         _chip_column("Ask the AI live", LIVE_AI_QUESTIONS)
-    return chatbot, saved_history, name_box, saved_name
+    return chatbot, saved_history
 
 
 def build_ui(
@@ -984,25 +1024,43 @@ def build_ui(
         if (ASSETS_DIR / filename).exists()
     ]
     with gr.Blocks(title="AskGeorge") as demo:
+        saved_name = gr.BrowserState(
+            "", storage_key="ag-visitor-name", secret="askgeorge-browser-state-v1"
+        )
         with gr.Row(elem_id="ag-topbar"):
             gr.HTML(_topbar_left_html(), elem_classes="ag-grow")
+            name_box = gr.Textbox(
+                placeholder="Your name",
+                show_label=False,
+                max_lines=1,
+                scale=0,
+                min_width=140,
+                elem_id="ag-name-input",
+            )
             for label, path in available_cvs:
                 gr.DownloadButton(
                     label, value=str(path), size="sm", elem_classes="ag-cv"
                 )
             gr.HTML(_topbar_right_html())
+
+        def _save_name(name: str | None) -> str:
+            """Persist the visitor's name to their browser."""
+            return _clean_name(name)
+
+        name_box.blur(_save_name, inputs=[name_box], outputs=[saved_name])
         gr.HTML(_hero_html())
         gr.HTML(
-            '<div id="ag-hint"><span>Tip: paste a job description in '
+            '<div id="ag-hint" role="note">'
+            '<p class="ag-hint-eyebrow">Tip</p>'
+            '<p class="ag-hint-text">Paste a job description in '
             "<b>Analyze a job fit</b> and get an honest, "
-            "requirement-by-requirement report.</span>"
-            '<button onclick="agDismissHint()" aria-label="Dismiss tip">✕</button></div>'
+            "requirement-by-requirement fit report.</p>"
+            '<button class="ag-hint-btn" onclick="agDismissHint()">Got it</button>'
+            "</div>"
         )
         with gr.Tabs():
             with gr.Tab("Chat with me"):
-                chatbot, saved_history, name_box, saved_name = _build_chat_panel(
-                    chat_fn
-                )
+                chatbot, saved_history = _build_chat_panel(chat_fn, name_box)
             with gr.Tab("Analyze a job fit"):
                 job_description = gr.Textbox(
                     show_label=False,
