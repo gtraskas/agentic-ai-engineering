@@ -239,6 +239,37 @@ footer {{
     margin: 0 auto;
     line-height: 1.55;
 }}
+/* ---------- Onboarding hint: dismissible, remembered in the browser ---------- */
+#ag-hint {{
+    display: none; /* agInitHint shows it unless previously dismissed */
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: fit-content;
+    max-width: 92%;
+    margin: 16px auto 0 auto;
+    padding: 7px 9px 7px 16px;
+    background: var(--ag-accent-soft);
+    border: 1px solid var(--ag-accent);
+    border-radius: 999px;
+    font-size: 0.82rem;
+    color: var(--ag-body);
+}}
+#ag-hint b {{
+    color: var(--ag-accent-strong);
+}}
+#ag-hint button {{
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    color: var(--ag-muted);
+    font-size: 0.85rem;
+    line-height: 1;
+    padding: 4px 6px;
+}}
+#ag-hint button:hover {{
+    color: var(--ag-accent);
+}}
 /* ---------- Tabs: minimal centered switch ----------
    No width override: Gradio 6 measures the tablist for its overflow
    menu, and a fit-content width collapses the tabs into a "..." menu. */
@@ -559,6 +590,25 @@ _THEME_HEAD: str = (
     "</script>"
 )
 
+# The hint starts hidden and is shown only for visitors who have not
+# dismissed it; Gradio mounts the DOM asynchronously, hence the retries.
+_HINT_HEAD: str = (
+    "<script>"
+    "window.agDismissHint = function () {"
+    'localStorage.setItem("ag-hint-dismissed", "1");'
+    'var hint = document.getElementById("ag-hint");'
+    'if (hint) { hint.style.display = "none"; }'
+    "};"
+    "window.agInitHint = function () {"
+    'var hint = document.getElementById("ag-hint");'
+    'if (hint && localStorage.getItem("ag-hint-dismissed") !== "1") {'
+    'hint.style.display = "flex";'
+    "}};"
+    "setTimeout(window.agInitHint, 600);"
+    "setTimeout(window.agInitHint, 1600);"
+    "</script>"
+)
+
 
 def serve_kwargs() -> dict[str, Any]:
     """Return the theme/css/head kwargs for ``launch()`` or ``mount_gradio_app()``.
@@ -568,7 +618,7 @@ def serve_kwargs() -> dict[str, Any]:
     return {
         "theme": build_theme(),
         "css": AEGEAN_CSS,
-        "head": _THEME_HEAD,
+        "head": _THEME_HEAD + _HINT_HEAD,
     }
 
 
@@ -846,10 +896,10 @@ def _build_chat_panel(
     )
     with gr.Row(elem_id="ag-input-row"):
         name_box = gr.Textbox(
-            placeholder="Your name (optional)",
+            placeholder="Your name",
             show_label=False,
             scale=0,
-            min_width=170,
+            min_width=150,
             elem_id="ag-name-input",
         )
         textbox = gr.Textbox(
@@ -942,6 +992,12 @@ def build_ui(
                 )
             gr.HTML(_topbar_right_html())
         gr.HTML(_hero_html())
+        gr.HTML(
+            '<div id="ag-hint"><span>Tip: paste a job description in '
+            "<b>Analyze a job fit</b> and get an honest, "
+            "requirement-by-requirement report.</span>"
+            '<button onclick="agDismissHint()" aria-label="Dismiss tip">✕</button></div>'
+        )
         with gr.Tabs():
             with gr.Tab("Chat with me"):
                 chatbot, saved_history, name_box, saved_name = _build_chat_panel(
