@@ -90,6 +90,11 @@ AEGEAN_CSS: str = f"""
     --ag-accent-soft: rgba(56, 189, 248, 0.16);
     --ag-shadow: rgba(0, 0, 0, 0.35);
 }}
+/* The two tabs differ in height; without a reserved gutter the vertical
+   scrollbar pops in and out on tab switch and shifts the whole layout */
+html {{
+    scrollbar-gutter: stable;
+}}
 body, .gradio-container {{
     background: var(--ag-canvas) !important;
     color: var(--ag-body);
