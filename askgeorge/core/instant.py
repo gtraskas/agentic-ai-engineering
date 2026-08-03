@@ -17,8 +17,6 @@ import re
 from dataclasses import dataclass
 from difflib import SequenceMatcher
 
-INSTANT_MARKER: str = "⚡ *Instant answer*\n\n"
-
 _FUZZY_THRESHOLD: float = 0.90
 
 _NON_ALNUM = re.compile(r"[^a-z0-9\s]+")
@@ -61,18 +59,18 @@ class InstantFAQ:
             message: The visitor's raw chat message.
 
         Returns:
-            The matched answer prefixed with the instant marker, or None
-            when no trigger matches closely enough.
+            The matched answer, or None when no trigger matches closely
+            enough.
         """
         normalized = self._normalize(message)
         if not normalized:
             return None
         for trigger, answer in self._catalog:
             if normalized == trigger:
-                return INSTANT_MARKER + answer
+                return answer
         for trigger, answer in self._catalog:
             if SequenceMatcher(None, normalized, trigger).ratio() >= _FUZZY_THRESHOLD:
-                return INSTANT_MARKER + answer
+                return answer
         return None
 
     @staticmethod
@@ -101,7 +99,7 @@ INSTANT_ENTRIES: tuple[InstantEntry, ...] = (
             "Alongside that I've completed 90+ consulting engagements on "
             "Upwork with a 100% Job Success Score.\n\n"
             "I'm now looking for a full-time senior AI/ML role with real "
-            "end-to-end ownership. Ask me about any of my projects — or paste "
+            "end-to-end ownership. Ask me about any of my projects, or paste "
             "a job description in the **Analyze a job fit** tab and I'll give "
             "you an honest, evidence-backed read on how well I match."
         ),
@@ -114,12 +112,12 @@ INSTANT_ENTRIES: tuple[InstantEntry, ...] = (
             "What is your location?",
         ),
         answer=(
-            "Yes — remote is my default. I've worked fully remote for four "
+            "Yes, remote is my default. I've worked fully remote for four "
             "years with a US team on Central time, so my schedule already "
             "overlaps with US mornings. I'm based in Thessaloniki, Greece "
             "(EU citizen), with a dedicated home office and stable fiber.\n\n"
-            "For intro calls I'm available weekday evenings 18:00–22:00 "
-            "Athens time — that's 11:00–15:00 US Eastern and 08:00–12:00 US "
+            "For intro calls I'm available weekday evenings 18:00-22:00 "
+            "Athens time. That's 11:00-15:00 US Eastern and 08:00-12:00 US "
             "Pacific, so both European and US teams can book comfortably "
             "using the calendar at the bottom of this page."
         ),
@@ -133,12 +131,12 @@ INSTANT_ENTRIES: tuple[InstantEntry, ...] = (
             "What is your availability and notice period?",
         ),
         answer=(
-            "My notice period is one month — I can start about four weeks "
+            "My notice period is one month, so I can start about four weeks "
             "after an offer. I'm currently with Predictive Fitness part-time "
             "(full time May 2022 to May 2026), and my consulting engagements "
             "stop for a full-time role: the goal is to go deep on one hard "
             "problem with a strong team. Contractor or employee both work "
-            "for me — I've contracted for years; the terms just need to be "
+            "for me. I've contracted for years; the terms just need to be "
             "clear before signing."
         ),
     ),
@@ -151,7 +149,7 @@ INSTANT_ENTRIES: tuple[InstantEntry, ...] = (
         ),
         answer=(
             "My most recent project is the assistant you're talking to right "
-            "now — **AskGeorge**, a production agentic AI app with two "
+            "now: **AskGeorge**, a production agentic AI app with two "
             "switchable backends (a from-scratch tool-calling loop and the "
             "OpenAI Agents SDK), hybrid BM25 + dense RAG in Qdrant, a "
             "parallel LLM guardrail, a structured job-fit pipeline, and "
@@ -161,7 +159,7 @@ INSTANT_ENTRIES: tuple[InstantEntry, ...] = (
             "tasting notes, and a neural network under an LLM planner (live "
             "demo on Modal); and **MolekitChen**, a RAG food-science iOS app "
             "grounded in peer-reviewed research, live on the App Store. "
-            "Links to all three are in the header above — happy to go deep "
+            "Links to all three are in the footer, and I'm happy to go deep "
             "on any of them."
         ),
     ),
@@ -172,7 +170,7 @@ INSTANT_ENTRIES: tuple[InstantEntry, ...] = (
             "Do you have testimonials?",
         ),
         answer=(
-            "I'm Top Rated Plus on Upwork — top 3% of performers — with a "
+            "I'm Top Rated Plus on Upwork (top 3% of performers) with a "
             "100% Job Success Score across 90+ engagements. The tags clients "
             "choose most often: Clear Communicator, Committed to Quality, "
             "Collaborative, Solution Oriented, Reliable.\n\n"
@@ -180,9 +178,9 @@ INSTANT_ENTRIES: tuple[InstantEntry, ...] = (
             "prompt, extremely competent, gets it right very quickly, and "
             "does a very very high quality job.\" Another client highlighted "
             "what I value most: \"Best of all is Georgios' honesty regarding "
-            "his limitations — which is sadly rare in freelancing.\" My "
-            "largest engagement — four years with Predictive Fitness, "
-            "thousands of hours — is rated 5.0. Ask me about testimonials "
+            "his limitations, which is sadly rare in freelancing.\" My "
+            "largest engagement, four years with Predictive Fitness and "
+            "thousands of hours, is rated 5.0. Ask me about testimonials "
             "for any specific kind of work."
         ),
     ),
@@ -194,7 +192,7 @@ INSTANT_ENTRIES: tuple[InstantEntry, ...] = (
         ),
         answer=(
             "Because I build AI systems that survive production. Domains "
-            "change — sports science, food science, energy, healthcare — but "
+            "change (sports science, food science, energy, healthcare) but "
             "the work is the same: get the data right, ground the model, "
             "monitor it, know how it fails. My single strongest area is "
             "production retrieval and agent systems in Python on AWS.\n\n"
@@ -202,8 +200,8 @@ INSTANT_ENTRIES: tuple[InstantEntry, ...] = (
             "Python proof-of-concept to production, a causal scoring pipeline "
             "running daily, a RAG iOS app live on the App Store, a "
             "multi-agent system with a fine-tuned LLM, and this assistant "
-            "itself. And I'm honest about limits — clients call that out in "
-            "reviews — so when I say something will work, it does. Paste "
+            "itself. And I'm honest about limits; clients call that out in "
+            "reviews. When I say something will work, it does. Paste "
             "your job description in the **Analyze a job fit** tab for a "
             "requirement-by-requirement answer."
         ),
@@ -230,7 +228,7 @@ INSTANT_ENTRIES: tuple[InstantEntry, ...] = (
             "- **AskGeorge** (this app): hybrid dense + BM25 retrieval fused "
             "in Qdrant with local FastEmbed embeddings and a retrieval "
             "golden-set eval gating every deploy.\n\n"
-            "Ask me about any design decision — chunking, hybrid fusion, "
+            "Ask me about any design decision: chunking, hybrid fusion, "
             "hallucination control, or evaluation."
         ),
     ),
@@ -244,13 +242,13 @@ INSTANT_ENTRIES: tuple[InstantEntry, ...] = (
         answer=(
             "Three ways, pick what suits you:\n\n"
             "- **Book an intro call** directly in the calendar at the bottom "
-            "of this page — weekday evenings 18:00–22:00 Athens time, which "
+            "of this page: weekday evenings 18:00-22:00 Athens time, which "
             "works for both European and US teams.\n"
             "- **Email** [georgiost77@gmail.com](mailto:georgiost77@gmail.com) "
             "or message me on "
             "[LinkedIn](https://www.linkedin.com/in/george-traskas/).\n"
             "- **Leave your email here in chat** with a line about your role "
-            "and company — I get notified immediately and reply personally."
+            "and company. I get notified immediately and reply personally."
         ),
     ),
 )

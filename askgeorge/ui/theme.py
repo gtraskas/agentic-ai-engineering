@@ -1,8 +1,8 @@
 """Aegean Twin design: theme, CSS, and the full Gradio layout.
 
 Hero-centric portfolio chat in two moods: a bright off-white canvas and a
-deep-navy night mode, both accented Aegean sky. Fraunces for display type,
-Inter for text, JetBrains Mono for small-caps labels. The visitor's OS
+deep-navy night mode, both accented Aegean sky. One typeface (Inter);
+hierarchy comes from weight, size, and letter-spacing. The visitor's OS
 preference picks the initial theme; a top-bar toggle overrides it and is
 remembered in localStorage.
 """
@@ -57,7 +57,7 @@ CURATED_QUESTIONS: list[str] = [
     "Do you know Kubernetes?",
 ]
 
-CHAT_PLACEHOLDER: str = "Ask about my experience and projects — I answer as George."
+CHAT_PLACEHOLDER: str = "Ask about my experience and projects. I answer as George."
 
 AEGEAN_CSS: str = f"""
 /* ---------- Palette: light by default, .dark overrides ---------- */
@@ -99,14 +99,10 @@ body, .gradio-container {{
 footer {{
     display: none !important;
 }}
-.ag-serif {{
-    font-family: "Fraunces", Georgia, serif;
-}}
 .ag-label {{
-    font-family: "JetBrains Mono", monospace;
     font-size: 0.68rem;
     font-weight: 600;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--ag-subtle);
     margin: 0 0 10px 0;
@@ -128,27 +124,26 @@ footer {{
     flex: 1 1 auto !important;
 }}
 #ag-topbar .ag-wordmark {{
-    font-family: "Fraunces", Georgia, serif;
-    font-size: 1.15rem;
-    font-weight: 600;
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
     color: var(--ag-ink);
     margin: 0;
     white-space: nowrap;
 }}
 #ag-topbar .ag-tagline {{
-    font-family: "JetBrains Mono", monospace;
-    font-size: 0.62rem;
-    letter-spacing: 0.13em;
+    font-size: 0.66rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--ag-subtle);
     margin: 2px 0 0 0;
     white-space: nowrap;
 }}
 #ag-hero .ag-status {{
-    font-family: "JetBrains Mono", monospace;
     font-size: 0.68rem;
     font-weight: 600;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: #10B981;
     margin: 18px 0 0 0;
@@ -214,16 +209,15 @@ footer {{
     box-shadow: 0 0 34px var(--ag-accent-soft);
 }}
 #ag-hero h1.ag-hl {{
-    font-family: "Fraunces", Georgia, serif;
-    font-size: clamp(2rem, 5.4vw, 2.9rem);
-    font-weight: 550;
-    letter-spacing: -0.015em;
-    line-height: 1.16;
+    font-size: clamp(1.9rem, 5vw, 2.7rem);
+    font-weight: 750;
+    letter-spacing: -0.03em;
+    line-height: 1.14;
     color: var(--ag-ink);
     margin: 10px 0 14px 0;
 }}
 #ag-hero h1.ag-hl em {{
-    font-style: italic;
+    font-style: normal;
     color: var(--ag-accent);
 }}
 #ag-hero .ag-support {{
@@ -503,14 +497,6 @@ def build_theme() -> gr.themes.Base:
     )
 
 
-# Fraunces carries the hero headline and wordmark; loaded straight from
-# Google Fonts because gr.themes.GoogleFont only covers theme body fonts.
-_FONT_HEAD: str = (
-    '<link rel="preconnect" href="https://fonts.googleapis.com">'
-    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
-    '<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">'
-)
-
 # Theme bootstrapping: saved choice wins, otherwise the OS preference.
 # Gradio initializes its own theme class late, so the state is re-applied
 # after startup ticks; the toggle persists to localStorage.
@@ -547,7 +533,7 @@ def serve_kwargs() -> dict[str, Any]:
     return {
         "theme": build_theme(),
         "css": AEGEAN_CSS,
-        "head": _FONT_HEAD + _THEME_HEAD,
+        "head": _THEME_HEAD,
     }
 
 
@@ -596,7 +582,7 @@ def _hero_html() -> str:
     <div id="ag-hero">
         {photo_tag}
         <p class="ag-status">● Open to work</p>
-        <h1 class="ag-hl">Ask me anything.<br>I'm George — <em>in AI form</em>.</h1>
+        <h1 class="ag-hl">Ask me anything.<br>I'm George, <em>in AI form</em>.</h1>
         <p class="ag-support">Recruiters welcome: ask about my experience and
         projects, or paste a job description and get my honest fit for the role.</p>
     </div>
@@ -648,7 +634,7 @@ def _footer_html() -> str:
     return f"""
     <div id="ag-footer">
         <div class="ag-foot-line">
-            This assistant is itself one of my projects — an
+            This assistant is itself one of my projects: an
             <a href="{REPO_URL}" target="_blank" rel="noopener">open-source</a>
             production agentic AI system.
         </div>
@@ -829,9 +815,9 @@ def _build_chat_panel(chat_fn: Callable[..., Any]) -> None:
 
     _chip_row(CURATED_QUESTIONS)
     with gr.Accordion("More questions", open=False, elem_id="ag-more-q"):
-        gr.HTML('<p class="ag-label">⚡ Instant answers — curated facts, zero wait</p>')
+        gr.HTML('<p class="ag-label">Quick answers</p>')
         _chip_row([entry.triggers[0] for entry in INSTANT_ENTRIES])
-        gr.HTML('<p class="ag-label">🤖 Watch the AI answer live — retrieval + reasoning</p>')
+        gr.HTML('<p class="ag-label">Ask the AI live</p>')
         _chip_row(LIVE_AI_QUESTIONS)
 
 
@@ -891,7 +877,7 @@ def build_ui(
                 )
         calendar_url = booking_url()
         if calendar_url:
-            with gr.Accordion("📅 Book an intro call", open=False, elem_id="ag-book"):
+            with gr.Accordion("Book an intro call", open=False, elem_id="ag-book"):
                 gr.HTML(_booking_iframe_html(calendar_url))
         gr.HTML(_footer_html())
     return demo

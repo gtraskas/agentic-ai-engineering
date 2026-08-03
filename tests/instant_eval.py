@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import sys
 
-from askgeorge.core.instant import INSTANT_MARKER, InstantFAQ
+from askgeorge.core.instant import InstantFAQ
 
 # Messages that must return an instant answer, with a substring the
 # answer must contain — guards against triggers mapped to the wrong entry.
@@ -68,14 +68,12 @@ def main() -> int:
     for message, needle in MUST_MATCH:
         reply = faq.match(message)
         if reply is None:
-            failures.append(f"NO MATCH: {message!r} — expected an instant answer")
-        elif not reply.startswith(INSTANT_MARKER):
-            failures.append(f"NO MARKER: {message!r} — reply lacks the instant marker")
+            failures.append(f"NO MATCH: {message!r} - expected an instant answer")
         elif needle not in reply:
-            failures.append(f"WRONG ANSWER: {message!r} — expected needle {needle!r}")
+            failures.append(f"WRONG ANSWER: {message!r} - expected needle {needle!r}")
     for message in MUST_PASS_THROUGH:
         if faq.match(message) is not None:
-            failures.append(f"FALSE POSITIVE: {message!r} — must reach the LLM")
+            failures.append(f"FALSE POSITIVE: {message!r} - must reach the LLM")
     total = len(MUST_MATCH) + len(MUST_PASS_THROUGH)
     print(f"instant eval: {total - len(failures)}/{total} passed")
     for failure in failures:
