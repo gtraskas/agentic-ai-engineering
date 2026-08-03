@@ -306,6 +306,20 @@ footer {{
 #ag-chat .placeholder-content * {{
     color: var(--ag-subtle) !important;
 }}
+/* Safety net for model-emitted tables: scroll inside the bubble instead
+   of blowing up the narrow chat column */
+#ag-chat .message table {{
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    font-size: 0.78rem;
+    border-collapse: collapse;
+}}
+#ag-chat .message th, #ag-chat .message td {{
+    border: 1px solid var(--ag-border);
+    padding: 4px 8px;
+    white-space: nowrap;
+}}
 /* ---------- Input ---------- */
 #ag-chat-input {{
     background: transparent !important;
