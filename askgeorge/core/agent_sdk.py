@@ -28,7 +28,7 @@ from askgeorge.core.config import (
     OPENROUTER_BASE_URL,
     chat_model,
     guardrail_enabled,
-    reasoning_extra_body,
+    openrouter_extra_body,
     temperature,
 )
 from askgeorge.core.guardrail import GUARDRAIL_REFUSAL, build_scope_guardrail
@@ -64,7 +64,7 @@ class SdkAgent:
             instructions=build_system_prompt(profile),
             model=model,
             model_settings=ModelSettings(
-                temperature=temperature(), extra_body=reasoning_extra_body()
+                temperature=temperature(), extra_body=openrouter_extra_body()
             ),
             tools=self._build_tools(dispatcher),
             input_guardrails=guardrails,
@@ -91,12 +91,25 @@ class SdkAgent:
         # judge what the visitor actually typed, not the augmented prompt.
         result = Runner.run_streamed(self._agent, input=input_items, context=message)
         reply = ""
+        # Reset the reply only when a tool call actually started a fresh model
+        # turn. Resetting on every ResponseCreatedEvent wiped the answer
+        # mid-stream when a provider split one reply across response events,
+        # leaving visitors a garbage tail fragment.
+        tool_round_started = False
         try:
             async for event in result.stream_events():
+                if (
+                    event.type == "run_item_stream_event"
+                    and getattr(event.item, "type", "") == "tool_call_item"
+                ):
+                    tool_round_started = True
+                    continue
                 if event.type != "raw_response_event":
                     continue
                 if isinstance(event.data, ResponseCreatedEvent):
-                    reply = ""  # a fresh model turn starts (e.g. after a tool call)
+                    if tool_round_started:
+                        reply = ""
+                        tool_round_started = False
                 elif isinstance(event.data, ResponseTextDeltaEvent):
                     reply += event.data.delta
                     yield reply

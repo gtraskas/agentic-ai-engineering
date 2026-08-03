@@ -16,6 +16,8 @@ _BASE_RULES: str = (
     "details?'). Expand only when the visitor explicitly asks for more.\n"
     "- Prefer flowing sentences over bullet lists; use at most 3 bullets and "
     "only when truly clearer.\n"
+    "- The chat pane is narrow: NEVER format an answer as a Markdown table. "
+    "Summarize in prose or short bullets instead.\n"
     "- Vary your wording: do not reuse phrases, quotes, or sentence structures "
     "you already used earlier in this conversation.\n"
     "- NEVER write out George's email address, LinkedIn, or GitHub links in a "
@@ -101,5 +103,10 @@ def augment_with_context(message: str, context: str) -> str:
         f"{CONTEXT_OPEN_TAG}\n"
         "Background retrieved for this question (ground your answer here and "
         f"in the pinned summary):\n\n{context}\n"
-        f"{CONTEXT_CLOSE_TAG}"
+        f"{CONTEXT_CLOSE_TAG}\n\n"
+        # Restated after the background on purpose: smaller models otherwise
+        # drift toward earlier turns once history plus a long context block
+        # separate them from the question (observed with the free default).
+        f"Now answer this, my most recent question, and no earlier one: "
+        f"{message}"
     )

@@ -10,7 +10,13 @@ DATA_DIR: Path = PACKAGE_DIR / "me"
 ASSETS_DIR: Path = PACKAGE_DIR / "ui" / "assets"
 
 OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
+# Fast, consistent, and cheap (~$0.10/M input tokens); with the global
+# 100-messages/day rate cap the worst-case spend is pennies. The fallback
+# is the best free model from the Aug 2026 benchmark (gemma: 4/4 clean
+# runs, obeys formatting rules, correct tool calls, valid guardrail
+# structured output), covering paid-model outages at zero cost.
 DEFAULT_CHAT_MODEL: str = "google/gemini-3.1-flash-lite"
+DEFAULT_FALLBACK_MODEL: str = "google/gemma-4-26b-a4b-it:free"
 DEFAULT_REASONING_EFFORT: str = "low"
 DEFAULT_TEMPERATURE: float = 0.7
 MAX_TOOL_ROUNDS: int = 3
@@ -43,15 +49,34 @@ def jobfit_model() -> str:
     return os.getenv("JOBFIT_MODEL", chat_model())
 
 
-def reasoning_extra_body() -> dict[str, dict[str, str]]:
-    """Return OpenRouter extra body capping hidden 'thinking' for fast replies.
+def fallback_model() -> str:
+    """Return the paid fallback model id, honoring OPENROUTER_FALLBACK_MODEL.
 
-    Reasoning-capable models (Gemini 3.x, GPT-5 family) think silently before
-    writing, which delays the first streamed token. Low effort keeps replies
-    snappy; override with ASKGEORGE_REASONING (e.g. 'medium', 'high').
+    Used when the free primary model is rate-limited or its provider pool is
+    down. The default is the model the app shipped with before the free
+    default: one of the cheapest paid models on OpenRouter.
+    """
+    return os.getenv("OPENROUTER_FALLBACK_MODEL", DEFAULT_FALLBACK_MODEL)
+
+
+def openrouter_extra_body(primary: str | None = None) -> dict[str, object]:
+    """Return the OpenRouter extra body shared by every LLM call.
+
+    Two concerns travel here. ``reasoning``: reasoning-capable models think
+    silently before writing, which delays the first streamed token, so the
+    effort is capped low (override with ASKGEORGE_REASONING). ``models``:
+    OpenRouter's server-side fallback chain, so a rate-limited or unavailable
+    free model silently falls through to the cheap paid fallback instead of
+    failing the visitor's request.
+
+    Args:
+        primary: Model id the caller sends the request with; defaults to the
+            chat model. The fallback is appended unless it is the primary.
     """
     effort = os.getenv("ASKGEORGE_REASONING", DEFAULT_REASONING_EFFORT)
-    return {"reasoning": {"effort": effort}}
+    first = primary or chat_model()
+    chain = [first] if first == fallback_model() else [first, fallback_model()]
+    return {"reasoning": {"effort": effort}, "models": chain}
 
 
 def temperature() -> float:

@@ -18,7 +18,7 @@ from askgeorge.core.config import (
     MAX_TOOL_ROUNDS,
     OPENROUTER_BASE_URL,
     chat_model,
-    reasoning_extra_body,
+    openrouter_extra_body,
     temperature,
 )
 from askgeorge.core.knowledge import BackgroundKnowledge
@@ -72,7 +72,7 @@ class ScratchAgent:
                 tools=self._dispatcher.schemas(),
                 stream=True,
                 temperature=temperature(),
-                extra_body=reasoning_extra_body(),
+                extra_body=openrouter_extra_body(self._model),
             )
             for chunk in stream:
                 if not chunk.choices:
