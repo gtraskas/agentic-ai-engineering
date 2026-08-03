@@ -332,6 +332,25 @@ footer {{
     border-radius: 12px !important;
     margin: 6px !important;
 }}
+/* ---------- Chat actions: quiet clear button under the input ---------- */
+#ag-chat-actions {{
+    justify-content: flex-end;
+    margin-top: 2px;
+}}
+#ag-chat-actions button.ag-clear {{
+    width: auto;
+    flex: 0 0 auto !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: var(--ag-subtle) !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    padding: 2px 6px !important;
+}}
+#ag-chat-actions button.ag-clear:hover {{
+    color: var(--ag-accent) !important;
+}}
 /* ---------- Question pills: two columns, FAQ left, live AI right ---------- */
 #ag-qcols {{
     margin-top: 10px;
@@ -772,6 +791,14 @@ def _build_chat_panel(chat_fn: Callable[..., Any]) -> None:
         elem_id="ag-chat-input",
     )
     textbox.submit(respond, inputs=[textbox, chatbot], outputs=[chatbot, textbox])
+    with gr.Row(elem_id="ag-chat-actions"):
+        clear_button = gr.Button("Clear chat", size="sm", elem_classes="ag-clear")
+
+    def _clear_chat() -> tuple[list, str]:
+        """Wipe the conversation and the input box."""
+        return [], ""
+
+    clear_button.click(_clear_chat, outputs=[chatbot, textbox])
 
     def _chip_handler(question: str) -> Callable[..., Any]:
         if inspect.isasyncgenfunction(respond):
