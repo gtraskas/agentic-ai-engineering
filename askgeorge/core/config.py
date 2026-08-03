@@ -10,14 +10,13 @@ DATA_DIR: Path = PACKAGE_DIR / "me"
 ASSETS_DIR: Path = PACKAGE_DIR / "ui" / "assets"
 
 OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
-# Benchmarked Aug 2026 against the free tool-calling pool. Gemma won on
-# consistency: 4/4 clean runs, obeys the answer-length and no-table rules
-# every time, best streaming TTFT (~0.6-1.0s), correct tool calls, valid
-# guardrail structured output. nvidia/nemotron-3-super-120b-a12b:free was
-# faster on total generation but ignored formatting rules and produced
-# flaky replies in repeated runs.
-DEFAULT_CHAT_MODEL: str = "google/gemma-4-26b-a4b-it:free"
-DEFAULT_FALLBACK_MODEL: str = "google/gemini-3.1-flash-lite"
+# Fast, consistent, and cheap (~$0.10/M input tokens); with the global
+# 100-messages/day rate cap the worst-case spend is pennies. The fallback
+# is the best free model from the Aug 2026 benchmark (gemma: 4/4 clean
+# runs, obeys formatting rules, correct tool calls, valid guardrail
+# structured output), covering paid-model outages at zero cost.
+DEFAULT_CHAT_MODEL: str = "google/gemini-3.1-flash-lite"
+DEFAULT_FALLBACK_MODEL: str = "google/gemma-4-26b-a4b-it:free"
 DEFAULT_REASONING_EFFORT: str = "low"
 DEFAULT_TEMPERATURE: float = 0.7
 MAX_TOOL_ROUNDS: int = 3

@@ -33,7 +33,7 @@ tests/
 └── instant_eval.py         # instant-FAQ matcher eval, gates every CI run
 ```
 
-- **LLM:** any model via [OpenRouter](https://openrouter.ai) — default `google/gemma-4-26b-a4b-it:free` (benchmarked most consistent free tool-calling model: best streaming TTFT, obeys formatting rules, reliable tool calls, valid guardrail JSON) with reasoning effort capped at `low` for fast first tokens; switch anytime with `OPENROUTER_MODEL` / `ASKGEORGE_REASONING`. Every call carries an OpenRouter server-side fallback chain, so if the free model is rate-limited or down the request silently falls through to a cheap paid model (`OPENROUTER_FALLBACK_MODEL`, default `google/gemini-3.1-flash-lite`)
+- **LLM:** any model via [OpenRouter](https://openrouter.ai) — default `google/gemini-3.1-flash-lite` (fast, consistent, ~$0.10/M input; pennies per day under the global rate cap) with reasoning effort capped at `low` for fast first tokens; switch anytime with `OPENROUTER_MODEL` / `ASKGEORGE_REASONING`. Every call carries an OpenRouter server-side fallback chain to the best free model from the benchmark (`OPENROUTER_FALLBACK_MODEL`, default `google/gemma-4-26b-a4b-it:free`), so a paid-model outage degrades to free instead of failing
 - **Two switchable agent backends:** a from-scratch tool-calling loop and the OpenAI Agents SDK (`AGENT_BACKEND=scratch|sdk`)
 - **Input guardrail (SDK backend):** a parallel judge LLM with a Pydantic verdict blocks off-topic, dangerous, and prompt-injection messages before they reach the main agent (`ASKGEORGE_GUARDRAIL=0` to disable)
 - **Rate limiting:** in-memory sliding windows — 15 messages/hour per visitor, 100/day globally — with polite first-person refusals
@@ -111,8 +111,8 @@ Every push runs lint + smoke tests via GitHub Actions; pushes to `master` auto-d
 | Variable | Required | Purpose |
 | --- | --- | --- |
 | `OPENROUTER_API_KEY` | yes | OpenRouter API key (openrouter.ai/keys) |
-| `OPENROUTER_MODEL` | no | Override the chat model (default `google/gemma-4-26b-a4b-it:free`) |
-| `OPENROUTER_FALLBACK_MODEL` | no | Override the paid fallback model (default `google/gemini-3.1-flash-lite`) |
+| `OPENROUTER_MODEL` | no | Override the chat model (default `google/gemini-3.1-flash-lite`) |
+| `OPENROUTER_FALLBACK_MODEL` | no | Override the fallback model (default `google/gemma-4-26b-a4b-it:free`) |
 | `JOBFIT_MODEL` | no | Override the job-fit model (defaults to the chat model) |
 | `ASKGEORGE_REASONING` | no | Reasoning effort for thinking models (default `low`; e.g. `medium`, `high`) |
 | `AGENT_BACKEND` | no | `sdk` (default, OpenAI Agents SDK) or `scratch` (from-scratch loop) |
