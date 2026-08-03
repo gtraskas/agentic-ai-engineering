@@ -10,7 +10,10 @@ DATA_DIR: Path = PACKAGE_DIR / "me"
 ASSETS_DIR: Path = PACKAGE_DIR / "ui" / "assets"
 
 OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
-DEFAULT_CHAT_MODEL: str = "google/gemini-3.1-flash-lite"
+# Benchmarked Aug 2026 against the free tool-calling pool: best TTFT
+# (~1.5-1.9s), fastest total, reliable tool calls, and valid guardrail
+# structured output. Runner-up: google/gemma-4-26b-a4b-it:free.
+DEFAULT_CHAT_MODEL: str = "nvidia/nemotron-3-super-120b-a12b:free"
 DEFAULT_REASONING_EFFORT: str = "low"
 DEFAULT_TEMPERATURE: float = 0.7
 MAX_TOOL_ROUNDS: int = 3

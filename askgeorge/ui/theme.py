@@ -16,7 +16,7 @@ from typing import Any
 import gradio as gr
 
 from askgeorge.core.config import ASSETS_DIR, booking_url
-from askgeorge.core.instant import InstantFAQ
+from askgeorge.core.instant import INSTANT_ENTRIES, InstantFAQ
 from askgeorge.core.ratelimit import RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -61,6 +61,19 @@ TECH_CHIPS: list[str] = [
 PAGE_SUBTITLE: str = (
     '<div id="ag-subtitle">Chat with me about my experience, or paste a '
     "job description and get my honest fit for the role.</div>"
+)
+
+# Questions that showcase the live RAG + LLM pipeline. Each appears in the
+# retrieval golden set (tests/retrieval_eval.py), so retrieval is known-good.
+LIVE_AI_QUESTIONS: list[str] = [
+    "How did you reduce alert noise at Predictive Fitness?",
+    "Do you know Kubernetes?",
+    "How does the job-fit analysis work?",
+]
+
+CHAT_PLACEHOLDER: str = (
+    "**Ask me anything about my work and experience.**\n\n"
+    "Tap a question below, or type your own."
 )
 
 AEGEAN_CSS: str = f"""
@@ -197,30 +210,50 @@ body, .gradio-container {{
     color: #334155 !important;
     font-weight: 600;
 }}
-/* Example questions: chip-styled, pinned to the bottom of the empty chat.
-   panel-wrap needs full height or placeholder-content's 100% resolves to 0. */
-#ag-chat .panel-wrap {{
-    height: 100% !important;
-}}
+/* Empty-chat placeholder: center the invitation text */
 #ag-chat .placeholder-content {{
     display: flex !important;
-    flex-direction: column !important;
-    justify-content: flex-end !important;
-    height: 100% !important;
-}}
-#ag-chat .examples {{
+    align-items: center !important;
     justify-content: center !important;
-    gap: 8px;
-    padding-bottom: 10px;
+    height: 100% !important;
+    color: #64748B;
 }}
-#ag-chat .example {{
+/* Persistent question chips below the chat: instant + live-AI groups */
+#ag-questions {{
     background: #FFFFFF;
     border: 1px solid #E2E8F0;
-    border-radius: 999px;
-    padding: 6px 14px;
+    border-radius: 16px;
+    padding: 16px 20px 12px 20px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    margin-top: 10px;
+    gap: 4px;
 }}
-#ag-chat .example:hover {{
-    border-color: {ACCENT};
+#ag-questions .ag-label {{
+    margin-bottom: 4px;
+}}
+#ag-questions .ag-q-row {{
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 10px;
+}}
+#ag-questions button.ag-q {{
+    flex: 0 0 auto;
+    width: auto;
+    font-size: 0.82rem !important;
+    font-weight: 500 !important;
+    color: #334155 !important;
+    background: #FFFFFF !important;
+    border: 1px solid #E2E8F0 !important;
+    border-radius: 999px !important;
+    padding: 5px 13px !important;
+    box-shadow: none;
+    transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}}
+#ag-questions button.ag-q:hover {{
+    border-color: {ACCENT} !important;
+    color: {ACCENT} !important;
+    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.15);
 }}
 #ag-book {{
     background: #FFFFFF;
@@ -355,6 +388,7 @@ _FORCE_LIGHT_HEAD: str = (
     "window.location.replace(url.href);"
     "}})();</script>"
 )
+
 
 
 def serve_kwargs() -> dict[str, Any]:
@@ -537,6 +571,110 @@ def _jobfit_handler(
     return handler
 
 
+def _make_responder(chat_fn: Callable[..., Any]) -> Callable[..., Any]:
+    """Build the streaming chat handler for the custom chat panel.
+
+    Args:
+        chat_fn: The wrapped chat callable (message, history, request).
+
+    Returns:
+        An async generator taking (message, history, request) and yielding
+        (chatbot history, textbox value) pairs as the reply streams in.
+    """
+
+    if inspect.isasyncgenfunction(chat_fn):
+
+        async def respond_async(message: str, history: list | None, request: gr.Request):
+            message = (message or "").strip()
+            history = history or []
+            if not message:
+                yield history, ""
+                return
+            shown = [*history, {"role": "user", "content": message}]
+            yield shown, ""
+            async for partial in chat_fn(message, history, request):
+                yield [*shown, {"role": "assistant", "content": partial}], ""
+
+        return respond_async
+
+    def respond_sync(message: str, history: list | None, request: gr.Request):
+        message = (message or "").strip()
+        history = history or []
+        if not message:
+            yield history, ""
+            return
+        shown = [*history, {"role": "user", "content": message}]
+        yield shown, ""
+        for partial in chat_fn(message, history, request):
+            yield [*shown, {"role": "assistant", "content": partial}], ""
+
+    return respond_sync
+
+
+def _build_chat_panel(chat_fn: Callable[..., Any]) -> None:
+    """Assemble the chat tab: chatbot, input, and persistent question chips.
+
+    A custom Blocks chat rather than gr.ChatInterface: the question chips
+    below the chat must submit on click, and external components cannot
+    trigger a ChatInterface submission. The instant group renders each
+    entry's canonical trigger straight from the InstantFAQ catalog, so the
+    UI can never offer a question the matcher does not answer.
+    """
+    respond = _make_responder(chat_fn)
+    chatbot = gr.Chatbot(
+        layout="panel",
+        show_label=False,
+        height=CHAT_HEIGHT,
+        elem_id="ag-chat",
+        placeholder=CHAT_PLACEHOLDER,
+    )
+    textbox = gr.Textbox(
+        placeholder="Ask about my experience, projects, or availability…",
+        show_label=False,
+        submit_btn=True,
+        elem_id="ag-chat-input",
+    )
+    textbox.submit(respond, inputs=[textbox, chatbot], outputs=[chatbot, textbox])
+
+    def _chip_handler(question: str) -> Callable[..., Any]:
+        if inspect.isasyncgenfunction(respond):
+
+            async def handler_async(history: list | None, request: gr.Request):
+                async for update in respond(question, history, request):
+                    yield update
+
+            return handler_async
+
+        def handler_sync(history: list | None, request: gr.Request):
+            yield from respond(question, history, request)
+
+        return handler_sync
+
+    chip_groups: list[tuple[str, list[str]]] = [
+        (
+            "⚡ Instant answers — curated facts, zero wait",
+            [entry.triggers[0] for entry in INSTANT_ENTRIES],
+        ),
+        (
+            "🤖 Watch the AI answer live — retrieval + reasoning",
+            LIVE_AI_QUESTIONS,
+        ),
+    ]
+    with gr.Column(elem_id="ag-questions"):
+        for group_label, questions in chip_groups:
+            gr.HTML(f'<p class="ag-label">{group_label}</p>')
+            with gr.Row(elem_classes="ag-q-row"):
+                for question in questions:
+                    chip = gr.Button(
+                        question, size="sm", scale=0, min_width=0, elem_classes="ag-q"
+                    )
+                    chip.click(
+                        _chip_handler(question),
+                        inputs=[chatbot],
+                        outputs=[chatbot, textbox],
+                    )
+
+
 def build_ui(
     chat_fn: Callable[..., Any], jobfit_fn: Callable[[str], Any]
 ) -> gr.Blocks:
@@ -568,23 +706,7 @@ def build_ui(
         gr.HTML(PAGE_SUBTITLE)
         with gr.Tabs():
             with gr.Tab("Chat with me"):
-                gr.ChatInterface(
-                    fn=chat_fn,
-                    chatbot=gr.Chatbot(
-                        layout="panel",
-                        show_label=False,
-                        height=CHAT_HEIGHT,
-                        elem_id="ag-chat",
-                    ),
-                    examples=[
-                        "What is your experience with RAG in production?",
-                        "Tell me about your most recent project.",
-                        "Why should we hire you as an AI engineer?",
-                        "What do your clients say about working with you?",
-                        "Are you open to remote roles?",
-                        "What is your availability and notice period?",
-                    ],
-                )
+                _build_chat_panel(chat_fn)
             with gr.Tab("Analyze a job fit"):
                 job_description = gr.Textbox(
                     label="Job description",
