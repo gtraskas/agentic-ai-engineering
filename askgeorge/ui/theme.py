@@ -1,7 +1,10 @@
-"""Aegean Minimal design: theme, CSS, and the full Gradio layout.
+"""Aegean Twin design: theme, CSS, and the full Gradio layout.
 
-Off-white canvas, deep navy ink, Aegean sky accent — a calm, bright
-professional portfolio look. Inter for text, JetBrains Mono for code.
+Hero-centric portfolio chat in two moods: a bright off-white canvas and a
+deep-navy night mode, both accented Aegean sky. Fraunces for display type,
+Inter for text, JetBrains Mono for small-caps labels. The visitor's OS
+preference picks the initial theme; a top-bar toggle overrides it and is
+remembered in localStorage.
 """
 
 from __future__ import annotations
@@ -21,47 +24,21 @@ from askgeorge.core.ratelimit import RateLimiter
 
 logger = logging.getLogger(__name__)
 
-ACCENT: str = "#0EA5E9"
-INK: str = "#0F172A"
-CANVAS: str = "#FAFAF8"
-CHAT_HEIGHT: int = 440
+CHAT_HEIGHT: int = 460
 CALENDAR_HEIGHT: int = 620
 
 REPO_URL: str = "https://github.com/gtraskas/agentic-ai-engineering"
 
 PROJECT_LINKS: list[tuple[str, str]] = [
-    ("MolekitChen · App Store", "https://apps.apple.com/us/app/molekitchen/id6773031788"),
-    ("MolekitChen · site", "https://molekitchen-landing.pages.dev"),
-    ("Wine-VFM · live demo", "https://gtraskas--wine-vfm-app-web.modal.run"),
-    ("Wine-VFM · code", "https://github.com/gtraskas/wine-vfm"),
+    ("MolekitChen", "https://apps.apple.com/us/app/molekitchen/id6773031788"),
+    ("Wine-VFM", "https://gtraskas--wine-vfm-app-web.modal.run"),
     ("AskGeorge · code", REPO_URL),
 ]
 
 CV_FILES: list[tuple[str, str]] = [
-    ("Download CV — AI/ML Engineer", "Georgios_Traskas_AI_ML_Engineer.pdf"),
-    ("Download CV — Data Scientist", "Georgios_Traskas_Data_Scientist.pdf"),
+    ("AI/ML CV", "Georgios_Traskas_AI_ML_Engineer.pdf"),
+    ("Data CV", "Georgios_Traskas_Data_Scientist.pdf"),
 ]
-
-TECH_CHIPS: list[str] = [
-    "Python",
-    "OpenAI Agents SDK",
-    "Hybrid RAG · Qdrant + BM25",
-    "FastEmbed",
-    "Structured Job-Fit Pipeline",
-    "LLM Guardrails",
-    "Rate Limiting",
-    "Golden-set Evals",
-    "OpenRouter",
-    "Gradio",
-    "Modal",
-    "GitHub Actions CI/CD",
-    "uv",
-]
-
-PAGE_SUBTITLE: str = (
-    '<div id="ag-subtitle">Chat with me about my experience, or paste a '
-    "job description and get my honest fit for the role.</div>"
-)
 
 # Questions that showcase the live RAG + LLM pipeline. Each appears in the
 # retrieval golden set (tests/retrieval_eval.py), so retrieval is known-good.
@@ -71,125 +48,235 @@ LIVE_AI_QUESTIONS: list[str] = [
     "How does the job-fit analysis work?",
 ]
 
-CHAT_PLACEHOLDER: str = (
-    "**Ask me anything about my work and experience.**\n\n"
-    "Tap a question below, or type your own."
-)
+# The four pills shown under the input: two instant, two live-AI. The full
+# catalog stays one click away in the "More questions" expander.
+CURATED_QUESTIONS: list[str] = [
+    "What do you do?",
+    "Can I talk to the real George?",
+    "How did you reduce alert noise at Predictive Fitness?",
+    "Do you know Kubernetes?",
+]
+
+CHAT_PLACEHOLDER: str = "Ask about my experience and projects — I answer as George."
 
 AEGEAN_CSS: str = f"""
-/* Single-theme page: pin the canvas even when the OS prefers dark */
+/* ---------- Palette: light by default, .dark overrides ---------- */
+:root {{
+    --ag-canvas: #FAFAF8;
+    --ag-surface: #FFFFFF;
+    --ag-ink: #0F172A;
+    --ag-body: #334155;
+    --ag-muted: #64748B;
+    --ag-subtle: #94A3B8;
+    --ag-border: #E2E8F0;
+    --ag-accent: #0EA5E9;
+    --ag-accent-strong: #0284C7;
+    --ag-accent-soft: rgba(14, 165, 233, 0.14);
+    --ag-shadow: rgba(15, 23, 42, 0.06);
+}}
+.dark {{
+    --ag-canvas: #0B1220;
+    --ag-surface: #121B2E;
+    --ag-ink: #E6EBF4;
+    --ag-body: #C3CCDB;
+    --ag-muted: #8B98AC;
+    --ag-subtle: #5F7091;
+    --ag-border: #223047;
+    --ag-accent: #38BDF8;
+    --ag-accent-strong: #7DD3FC;
+    --ag-accent-soft: rgba(56, 189, 248, 0.16);
+    --ag-shadow: rgba(0, 0, 0, 0.35);
+}}
 body, .gradio-container {{
-    background: {CANVAS} !important;
+    background: var(--ag-canvas) !important;
+    color: var(--ag-body);
 }}
 .gradio-container {{
-    max-width: 880px !important;
+    max-width: 820px !important;
     margin: 0 auto !important;
 }}
-#ag-header {{
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    padding: 26px 30px;
-    background: linear-gradient(160deg, #FFFFFF 0%, #F8FAFC 70%, #F0F9FF 100%);
-    border: 1px solid #E8EDF3;
-    border-radius: 18px;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.04);
+/* Hide Gradio's own footer chrome */
+footer {{
+    display: none !important;
 }}
-#ag-header img.ag-photo {{
-    width: 92px;
-    height: 92px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 2px solid #FFFFFF;
-    outline: 2px solid {ACCENT};
-    outline-offset: 2px;
-}}
-#ag-header .ag-name {{
-    font-size: 1.6rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
-    color: {INK};
-    margin: 0;
-}}
-#ag-header .ag-headline {{
-    font-size: 0.92rem;
-    color: #475569;
-    margin: 4px 0 10px 0;
-}}
-#ag-header .ag-badge {{
-    display: inline-block;
-    font-size: 0.72rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: #047857;
-    background: #ECFDF5;
-    border: 1px solid #A7F3D0;
-    border-radius: 999px;
-    padding: 3px 10px;
-    margin-right: 8px;
-}}
-#ag-header a.ag-link {{
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: {ACCENT};
-    text-decoration: none;
-    margin-right: 14px;
-}}
-#ag-header a.ag-link:hover {{
-    text-decoration: underline;
-}}
-#ag-header .ag-projects {{
-    margin-top: 8px;
-}}
-#ag-header a.ag-chip,
-#ag-stack .ag-tech {{
-    display: inline-block;
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.01em;
-    color: #334155;
-    background: #FFFFFF;
-    border: 1px solid #E2E8F0;
-    border-radius: 8px;
-    padding: 4px 12px;
-    margin: 2px 6px 2px 0;
-    text-decoration: none;
-    transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-}}
-#ag-header a.ag-chip:hover {{
-    border-color: {ACCENT};
-    color: {ACCENT};
-    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.15);
+.ag-serif {{
+    font-family: "Fraunces", Georgia, serif;
 }}
 .ag-label {{
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.09em;
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
-    color: #64748B;
-    margin: 0 0 12px 0;
+    color: var(--ag-subtle);
+    margin: 0 0 10px 0;
 }}
-#ag-subtitle {{
-    text-align: center;
+/* ---------- Top bar ---------- */
+#ag-topbar {{
+    display: flex;
+    flex-wrap: nowrap !important;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 2px 0 2px;
+}}
+#ag-topbar > * {{
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 0 !important;
+}}
+#ag-topbar .ag-grow {{
+    flex: 1 1 auto !important;
+}}
+#ag-topbar .ag-wordmark {{
+    font-family: "Fraunces", Georgia, serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--ag-ink);
+    margin: 0;
+    white-space: nowrap;
+}}
+#ag-topbar .ag-tagline {{
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.62rem;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--ag-subtle);
+    margin: 2px 0 0 0;
+    white-space: nowrap;
+}}
+#ag-hero .ag-status {{
+    font-family: "JetBrains Mono", monospace;
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: #10B981;
+    margin: 18px 0 0 0;
+}}
+#ag-topbar a.ag-link {{
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--ag-muted);
+    text-decoration: none;
+    margin-left: 12px;
+    white-space: nowrap;
+}}
+#ag-topbar a.ag-link:hover {{
+    color: var(--ag-accent);
+}}
+#ag-topbar button.ag-cv {{
+    width: auto;
+    flex: 0 0 auto;
+    font-size: 0.78rem !important;
+    font-weight: 600 !important;
+    color: var(--ag-muted) !important;
+    background: transparent !important;
+    border: 1px solid var(--ag-border) !important;
+    border-radius: 999px !important;
+    padding: 4px 12px !important;
+    box-shadow: none !important;
+}}
+#ag-topbar button.ag-cv:hover {{
+    color: var(--ag-accent) !important;
+    border-color: var(--ag-accent) !important;
+}}
+#ag-theme-btn {{
+    cursor: pointer;
     font-size: 0.95rem;
-    color: #475569;
-    padding: 2px 0 6px 0;
+    line-height: 1;
+    color: var(--ag-muted);
+    background: transparent;
+    border: 1px solid var(--ag-border);
+    border-radius: 999px;
+    padding: 6px 10px;
+    margin-left: 12px;
+    transition: color 0.15s ease, border-color 0.15s ease;
 }}
-/* One uniform chat box: hide label, strip per-message chrome (selectors
-   verified against Gradio 6's rendered DOM: .message-row.panel.user-row/.bot-row) */
+#ag-theme-btn:hover {{
+    color: var(--ag-accent);
+    border-color: var(--ag-accent);
+}}
+/* ---------- Hero ---------- */
+#ag-hero {{
+    text-align: center;
+    padding: 30px 0 6px 0;
+}}
+#ag-hero img.ag-photo {{
+    display: block;
+    margin: 0 auto;
+    width: 96px;
+    height: 96px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 3px solid var(--ag-canvas);
+    outline: 2px solid var(--ag-accent);
+    outline-offset: 3px;
+    box-shadow: 0 0 34px var(--ag-accent-soft);
+}}
+#ag-hero h1.ag-hl {{
+    font-family: "Fraunces", Georgia, serif;
+    font-size: clamp(2rem, 5.4vw, 2.9rem);
+    font-weight: 550;
+    letter-spacing: -0.015em;
+    line-height: 1.16;
+    color: var(--ag-ink);
+    margin: 10px 0 14px 0;
+}}
+#ag-hero h1.ag-hl em {{
+    font-style: italic;
+    color: var(--ag-accent);
+}}
+#ag-hero .ag-support {{
+    font-size: 0.98rem;
+    color: var(--ag-muted);
+    max-width: 34rem;
+    margin: 0 auto;
+    line-height: 1.55;
+}}
+/* ---------- Tabs: minimal centered switch ----------
+   No width override: Gradio 6 measures the tablist for its overflow
+   menu, and a fit-content width collapses the tabs into a "..." menu. */
+.gradio-container [role="tablist"] {{
+    justify-content: center;
+    margin: 18px auto 6px auto;
+    background: transparent;
+    border: none !important;
+    gap: 26px;
+}}
+.gradio-container button[role="tab"] {{
+    border: none !important;
+    padding: 8px 2px !important;
+    font-size: 0.92rem !important;
+    font-weight: 600 !important;
+    color: var(--ag-subtle) !important;
+    background: transparent !important;
+    border-radius: 0 !important;
+}}
+.gradio-container button[role="tab"]:hover {{
+    color: var(--ag-ink) !important;
+}}
+.gradio-container button[role="tab"]::after {{
+    display: none !important;
+}}
+.gradio-container button[role="tab"][aria-selected="true"] {{
+    color: var(--ag-accent) !important;
+    box-shadow: inset 0 -2px 0 var(--ag-accent) !important;
+}}
+/* ---------- Chat: open surface, no card ---------- */
 #ag-chat .label-wrap, #ag-chat label {{
     display: none !important;
 }}
 #ag-chat {{
-    background: #FFFFFF;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
 }}
 #ag-chat .message-row.panel {{
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
     margin: 0 !important;
-    padding: 8px 12px !important;
+    padding: 9px 4px !important;
 }}
 #ag-chat .message-row.panel .flex-wrap,
 #ag-chat .message-row.panel .role,
@@ -198,151 +285,134 @@ body, .gradio-container {{
     border: none !important;
     box-shadow: none !important;
 }}
+#ag-chat .message-row, #ag-chat .message-row * {{
+    color: var(--ag-body);
+}}
 /* Same side, same box for both roles; a slim accent bar marks the visitor */
 #ag-chat .user-row {{
     justify-content: flex-start !important;
 }}
 #ag-chat .user-row > * {{
-    border-left: 3px solid {ACCENT} !important;
+    border-left: 3px solid var(--ag-accent) !important;
     padding-left: 12px !important;
 }}
 #ag-chat .user-row * {{
-    color: #334155 !important;
+    color: var(--ag-ink) !important;
     font-weight: 600;
 }}
-/* Empty-chat placeholder: center the invitation text */
 #ag-chat .placeholder-content {{
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
     height: 100% !important;
-    color: #64748B;
 }}
-/* Persistent question chips below the chat: instant + live-AI groups */
-#ag-questions {{
-    background: #FFFFFF;
-    border: 1px solid #E2E8F0;
-    border-radius: 16px;
-    padding: 16px 20px 12px 20px;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
-    margin-top: 10px;
-    gap: 4px;
+#ag-chat .placeholder-content * {{
+    color: var(--ag-subtle) !important;
 }}
-#ag-questions .ag-label {{
-    margin-bottom: 4px;
+/* ---------- Input ---------- */
+#ag-chat-input {{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
 }}
-#ag-questions .ag-q-row {{
+#ag-chat-input .input-container {{
+    background: var(--ag-surface) !important;
+    border: 1px solid var(--ag-border) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 10px var(--ag-shadow) !important;
+}}
+#ag-chat-input textarea {{
+    background: transparent !important;
+    color: var(--ag-ink) !important;
+    padding: 13px 16px !important;
+}}
+#ag-chat-input textarea::placeholder {{
+    color: var(--ag-subtle) !important;
+}}
+#ag-chat-input button.submit-button {{
+    background: var(--ag-accent) !important;
+    color: #FFFFFF !important;
+    border-radius: 12px !important;
+    margin: 6px !important;
+}}
+/* ---------- Question pills ---------- */
+.ag-q-row {{
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 10px;
+    justify-content: center;
+    gap: 7px;
+    margin: 4px 0 2px 0;
 }}
-#ag-questions button.ag-q {{
+#ag-more-q .ag-q-row {{
+    justify-content: flex-start;
+    margin-bottom: 12px;
+}}
+button.ag-q {{
     flex: 0 0 auto;
     width: auto;
-    font-size: 0.82rem !important;
+    font-size: 0.8rem !important;
     font-weight: 500 !important;
-    color: #334155 !important;
-    background: #FFFFFF !important;
-    border: 1px solid #E2E8F0 !important;
+    color: var(--ag-muted) !important;
+    background: transparent !important;
+    border: 1px solid var(--ag-border) !important;
     border-radius: 999px !important;
     padding: 5px 13px !important;
-    box-shadow: none;
-    transition: border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: none !important;
+    transition: border-color 0.15s ease, color 0.15s ease;
 }}
-#ag-questions button.ag-q:hover {{
-    border-color: {ACCENT} !important;
-    color: {ACCENT} !important;
-    box-shadow: 0 2px 8px rgba(14, 165, 233, 0.15);
+button.ag-q:hover {{
+    border-color: var(--ag-accent) !important;
+    color: var(--ag-accent) !important;
 }}
-#ag-book {{
-    background: #FFFFFF;
-    border: 1px solid #E2E8F0;
-    border-radius: 16px;
-    padding: 18px 22px;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
-}}
-#ag-book {{
-    border-radius: 18px;
-}}
-#ag-book iframe {{
-    width: 100%;
-    height: {CALENDAR_HEIGHT}px;
-    border: 0;
-    border-radius: 10px;
-}}
-#ag-stack {{
-    text-align: center;
-    padding: 14px 0 4px 0;
-}}
-#ag-stack .ag-stack-line {{
-    font-size: 0.82rem;
-    color: #64748B;
-    margin-bottom: 8px;
-}}
-#ag-stack a {{
-    color: {ACCENT};
-    text-decoration: none;
-    font-weight: 600;
-}}
-#ag-footer {{
-    text-align: center;
-    font-size: 0.8rem;
-    color: #94A3B8;
-    padding-top: 6px;
-}}
-/* Segmented-control tabs: centered pill switcher (stable ARIA selectors) */
-.gradio-container [role="tablist"] {{
-    justify-content: center;
-    width: fit-content;
-    margin: 8px auto 12px auto;
-    background: #EEF2F6;
-    border: 1px solid #E2E8F0;
-    border-bottom: 1px solid #E2E8F0 !important;
-    border-radius: 999px;
-    padding: 4px;
-    gap: 4px;
-}}
-.gradio-container button[role="tab"] {{
-    border: none !important;
-    border-radius: 999px !important;
-    padding: 9px 28px !important;
-    font-size: 0.95rem !important;
-    font-weight: 600 !important;
-    color: #64748B !important;
+/* "More questions" expander: quiet, borderless */
+#ag-more-q {{
     background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
 }}
-.gradio-container button[role="tab"]:hover {{
-    color: {INK} !important;
+#ag-more-q > button {{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: var(--ag-subtle) !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    justify-content: center !important;
 }}
-.gradio-container button[role="tab"]::after {{
-    display: none !important;  /* Gradio's native underline indicator */
+#ag-more-q > button:hover {{
+    color: var(--ag-accent) !important;
 }}
-.gradio-container button[role="tab"][aria-selected="true"] {{
-    background: #FFFFFF !important;
-    color: {ACCENT} !important;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12) !important;
-}}
-/* Match the paste box height to the chat panel for a consistent layout */
+/* ---------- Job-fit tab ---------- */
 #ag-jobfit-box textarea {{
     height: {CHAT_HEIGHT}px !important;
+    background: var(--ag-surface) !important;
+    color: var(--ag-ink) !important;
+    border: 1px solid var(--ag-border) !important;
+    border-radius: 16px !important;
 }}
-/* While the analysis streams, the report card pulses softly in the accent */
+#ag-jobfit-box label span {{
+    color: var(--ag-subtle) !important;
+}}
+/* Hide the report card until it holds actual content */
+#ag-jobfit-report:not(:has(p, table, h1, h2, h3, ul, ol)) {{
+    display: none;
+}}
 #ag-jobfit-report.generating,
 #ag-jobfit-report .generating {{
-    border-color: {ACCENT} !important;
+    border-color: var(--ag-accent) !important;
     animation: ag-pulse 1.6s ease-in-out infinite;
 }}
 @keyframes ag-pulse {{
-    0%, 100% {{ box-shadow: 0 0 0 0 rgba(14, 165, 233, 0.25); }}
-    50% {{ box-shadow: 0 0 0 7px rgba(14, 165, 233, 0.05); }}
+    0%, 100% {{ box-shadow: 0 0 0 0 var(--ag-accent-soft); }}
+    50% {{ box-shadow: 0 0 0 7px transparent; }}
 }}
 #ag-jobfit-report {{
-    background: #FFFFFF;
-    border: 1px solid #E2E8F0;
+    background: var(--ag-surface);
+    border: 1px solid var(--ag-border);
     border-radius: 16px;
     padding: 6px 22px;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 1px 3px var(--ag-shadow);
+    color: var(--ag-body);
 }}
 #ag-jobfit-report table {{
     width: 100%;
@@ -350,7 +420,7 @@ body, .gradio-container {{
     font-size: 0.86rem;
 }}
 #ag-jobfit-report th, #ag-jobfit-report td {{
-    border-bottom: 1px solid #EEF2F6;
+    border-bottom: 1px solid var(--ag-border);
     padding: 6px 10px;
     text-align: left;
 }}
@@ -361,49 +431,123 @@ body, .gradio-container {{
     white-space: nowrap;
     width: 1%;
 }}
+/* ---------- Booking accordion ---------- */
+#ag-book {{
+    background: transparent !important;
+    border: 1px solid var(--ag-border) !important;
+    border-radius: 16px !important;
+    box-shadow: none !important;
+    margin-top: 18px;
+}}
+#ag-book > button {{
+    background: transparent !important;
+    color: var(--ag-muted) !important;
+    font-weight: 600 !important;
+}}
+#ag-book iframe {{
+    width: 100%;
+    height: {CALENDAR_HEIGHT}px;
+    border: 0;
+    border-radius: 10px;
+    background: #FFFFFF; /* Google's booking page is light-only */
+}}
+/* ---------- Footer ---------- */
+#ag-footer {{
+    text-align: center;
+    padding: 26px 0 10px 0;
+}}
+#ag-footer .ag-foot-line {{
+    font-size: 0.82rem;
+    color: var(--ag-muted);
+    margin-bottom: 8px;
+}}
+#ag-footer a {{
+    color: var(--ag-accent);
+    text-decoration: none;
+    font-weight: 600;
+}}
+#ag-footer .ag-foot-links a {{
+    font-size: 0.8rem;
+    color: var(--ag-subtle);
+    font-weight: 500;
+    margin: 0 8px;
+}}
+#ag-footer .ag-foot-links a:hover {{
+    color: var(--ag-accent);
+}}
 """
 
 
 def build_theme() -> gr.themes.Base:
-    """Return the Aegean Minimal Gradio theme."""
+    """Return the Aegean Twin Gradio theme with light and dark token pairs."""
     return gr.themes.Soft(
         primary_hue="sky",
         neutral_hue="slate",
         font=[gr.themes.GoogleFont("Inter"), "system-ui", "sans-serif"],
         font_mono=[gr.themes.GoogleFont("JetBrains Mono"), "monospace"],
     ).set(
-        body_background_fill=CANVAS,
-        body_text_color=INK,
-        button_primary_background_fill=ACCENT,
+        body_background_fill="#FAFAF8",
+        body_background_fill_dark="#0B1220",
+        body_text_color="#0F172A",
+        body_text_color_dark="#E6EBF4",
+        background_fill_primary="#FFFFFF",
+        background_fill_primary_dark="#121B2E",
+        background_fill_secondary="#F8FAFC",
+        background_fill_secondary_dark="#0F1728",
+        border_color_primary="#E2E8F0",
+        border_color_primary_dark="#223047",
+        button_primary_background_fill="#0EA5E9",
+        button_primary_background_fill_dark="#0EA5E9",
         button_primary_text_color="#FFFFFF",
+        button_primary_text_color_dark="#FFFFFF",
     )
 
 
-_FORCE_LIGHT_HEAD: str = (
-    '<meta name="color-scheme" content="light">'
-    "<script>(function () {"
-    'var url = new URL(window.location.href);'
-    'if (url.searchParams.get("__theme") !== "light") {'
-    'url.searchParams.set("__theme", "light");'
-    "window.location.replace(url.href);"
-    "}})();</script>"
+# Fraunces carries the hero headline and wordmark; loaded straight from
+# Google Fonts because gr.themes.GoogleFont only covers theme body fonts.
+_FONT_HEAD: str = (
+    '<link rel="preconnect" href="https://fonts.googleapis.com">'
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+    '<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">'
 )
 
+# Theme bootstrapping: saved choice wins, otherwise the OS preference.
+# Gradio initializes its own theme class late, so the state is re-applied
+# after startup ticks; the toggle persists to localStorage.
+_THEME_HEAD: str = (
+    '<meta name="color-scheme" content="light dark">'
+    "<script>"
+    "window.agApplyTheme = function () {"
+    'var saved = localStorage.getItem("ag-theme");'
+    'var dark = saved ? saved === "dark" : '
+    'window.matchMedia("(prefers-color-scheme: dark)").matches;'
+    'document.documentElement.classList.toggle("dark", dark);'
+    'if (document.body) { document.body.classList.toggle("dark", dark); }'
+    'var icon = document.getElementById("ag-theme-icon");'
+    'if (icon) { icon.textContent = dark ? "☀" : "☾"; }'
+    "};"
+    "window.agToggleTheme = function () {"
+    'var dark = document.documentElement.classList.contains("dark");'
+    'localStorage.setItem("ag-theme", dark ? "light" : "dark");'
+    "window.agApplyTheme();"
+    "};"
+    "window.agApplyTheme();"
+    'document.addEventListener("DOMContentLoaded", window.agApplyTheme);'
+    "setTimeout(window.agApplyTheme, 500);"
+    "setTimeout(window.agApplyTheme, 1500);"
+    "</script>"
+)
 
 
 def serve_kwargs() -> dict[str, Any]:
     """Return the theme/css/head kwargs for ``launch()`` or ``mount_gradio_app()``.
 
     Gradio 6 applies theme and CSS at serve time, not at Blocks construction.
-    The head script forces Gradio's light mode for every visitor before the app
-    mounts: the page is a single-theme design, and dark-mode browsers would
-    otherwise render light cards with near-white text (invisible example chips
-    and chat replies).
     """
     return {
         "theme": build_theme(),
         "css": AEGEAN_CSS,
-        "head": _FORCE_LIGHT_HEAD,
+        "head": _FONT_HEAD + _THEME_HEAD,
     }
 
 
@@ -418,26 +562,43 @@ def _photo_data_uri(assets_dir: Path = ASSETS_DIR) -> str | None:
     return None
 
 
-def _header_html() -> str:
-    """Build the header card: photo, name, headline, badge, links, and projects."""
+def _topbar_left_html() -> str:
+    """Build the wordmark side of the top bar."""
+    return """
+    <div>
+        <p class="ag-wordmark">George Traskas</p>
+        <p class="ag-tagline">Data Scientist · AI/ML Engineer</p>
+    </div>
+    """
+
+
+def _topbar_right_html() -> str:
+    """Build the links + theme-toggle side of the top bar."""
+    return """
+    <div style="text-align: right; white-space: nowrap;">
+        <a class="ag-link" href="https://www.linkedin.com/in/george-traskas/" target="_blank" rel="noopener">LinkedIn</a>
+        <a class="ag-link" href="https://github.com/gtraskas" target="_blank" rel="noopener">GitHub</a>
+        <a class="ag-link" href="mailto:georgiost77@gmail.com">Email</a>
+        <button id="ag-theme-btn" onclick="agToggleTheme()" title="Switch light / dark"><span id="ag-theme-icon">☾</span></button>
+    </div>
+    """
+
+
+def _hero_html() -> str:
+    """Build the hero: portrait in an accent ring, headline, support line."""
     photo_uri = _photo_data_uri()
-    photo_tag = f'<img class="ag-photo" src="{photo_uri}" alt="George Traskas" />' if photo_uri else ""
-    project_chips = "".join(
-        f'<a class="ag-chip" href="{url}" target="_blank" rel="noopener">{label}</a>'
-        for label, url in PROJECT_LINKS
+    photo_tag = (
+        f'<img class="ag-photo" src="{photo_uri}" alt="George Traskas" />'
+        if photo_uri
+        else ""
     )
     return f"""
-    <div id="ag-header">
+    <div id="ag-hero">
         {photo_tag}
-        <div>
-            <p class="ag-name">George Traskas</p>
-            <p class="ag-headline">Data Scientist &amp; AI/ML Engineer · Python · LLMs · RAG · Agentic AI · AWS</p>
-            <span class="ag-badge">Open to work</span>
-            <a class="ag-link" href="https://www.linkedin.com/in/george-traskas/" target="_blank" rel="noopener">LinkedIn</a>
-            <a class="ag-link" href="https://github.com/gtraskas" target="_blank" rel="noopener">GitHub</a>
-            <a class="ag-link" href="mailto:georgiost77@gmail.com">Email</a>
-            <div class="ag-projects">{project_chips}</div>
-        </div>
+        <p class="ag-status">● Open to work</p>
+        <h1 class="ag-hl">Ask me anything.<br>I'm George — <em>in AI form</em>.</h1>
+        <p class="ag-support">Recruiters welcome: ask about my experience and
+        projects, or paste a job description and get my honest fit for the role.</p>
     </div>
     """
 
@@ -470,28 +631,28 @@ def _booking_embed_src(url: str) -> str:
     return resolved if "gv=true" in resolved else f"{resolved}{separator}gv=true"
 
 
-def _booking_html(url: str) -> str:
-    """Build the embedded Google Calendar booking section."""
-    return f"""
-    <div id="ag-book">
-        <p class="ag-label">Book an intro call</p>
-        <iframe src="{_booking_embed_src(url)}" title="Book an intro call with George"></iframe>
-    </div>
-    """
+def _booking_iframe_html(url: str) -> str:
+    """Build the embedded Google Calendar iframe for the booking accordion."""
+    return (
+        f'<iframe src="{_booking_embed_src(url)}" '
+        'title="Book an intro call with George"></iframe>'
+    )
 
 
-def _stack_html() -> str:
-    """Build the tech chip strip: one-line pitch + linked technology chips."""
-    chips = "".join(f'<span class="ag-tech">{chip}</span>' for chip in TECH_CHIPS)
+def _footer_html() -> str:
+    """Build the footer: open-source note plus quiet project links."""
+    links = " · ".join(
+        f'<a href="{url}" target="_blank" rel="noopener">{label}</a>'
+        for label, url in PROJECT_LINKS
+    )
     return f"""
-    <div id="ag-stack">
-        <p class="ag-label">Under the hood</p>
-        <div class="ag-stack-line">
+    <div id="ag-footer">
+        <div class="ag-foot-line">
             This assistant is itself one of my projects — an
             <a href="{REPO_URL}" target="_blank" rel="noopener">open-source</a>
             production agentic AI system.
         </div>
-        {chips}
+        <div class="ag-foot-links">{links}</div>
     </div>
     """
 
@@ -578,8 +739,9 @@ def _make_responder(chat_fn: Callable[..., Any]) -> Callable[..., Any]:
         chat_fn: The wrapped chat callable (message, history, request).
 
     Returns:
-        An async generator taking (message, history, request) and yielding
-        (chatbot history, textbox value) pairs as the reply streams in.
+        A generator (async when the backend streams asynchronously) taking
+        (message, history, request) and yielding (chatbot history, textbox
+        value) pairs as the reply streams in.
     """
 
     if inspect.isasyncgenfunction(chat_fn):
@@ -612,19 +774,22 @@ def _make_responder(chat_fn: Callable[..., Any]) -> Callable[..., Any]:
 
 
 def _build_chat_panel(chat_fn: Callable[..., Any]) -> None:
-    """Assemble the chat tab: chatbot, input, and persistent question chips.
+    """Assemble the chat tab: chatbot, input, curated pills, and the expander.
 
-    A custom Blocks chat rather than gr.ChatInterface: the question chips
-    below the chat must submit on click, and external components cannot
-    trigger a ChatInterface submission. The instant group renders each
-    entry's canonical trigger straight from the InstantFAQ catalog, so the
-    UI can never offer a question the matcher does not answer.
+    A custom Blocks chat rather than gr.ChatInterface: the question pills
+    must submit on click, and external components cannot trigger a
+    ChatInterface submission. Four curated pills sit under the input; the
+    full catalog lives in a collapsed "More questions" accordion whose
+    instant group renders straight from the InstantFAQ catalog, so the UI
+    can never offer a question the matcher does not answer.
     """
     respond = _make_responder(chat_fn)
     chatbot = gr.Chatbot(
         layout="panel",
         show_label=False,
-        height=CHAT_HEIGHT,
+        height=None,
+        min_height=90,
+        max_height=CHAT_HEIGHT,
         elem_id="ag-chat",
         placeholder=CHAT_PLACEHOLDER,
     )
@@ -650,29 +815,24 @@ def _build_chat_panel(chat_fn: Callable[..., Any]) -> None:
 
         return handler_sync
 
-    chip_groups: list[tuple[str, list[str]]] = [
-        (
-            "⚡ Instant answers — curated facts, zero wait",
-            [entry.triggers[0] for entry in INSTANT_ENTRIES],
-        ),
-        (
-            "🤖 Watch the AI answer live — retrieval + reasoning",
-            LIVE_AI_QUESTIONS,
-        ),
-    ]
-    with gr.Column(elem_id="ag-questions"):
-        for group_label, questions in chip_groups:
-            gr.HTML(f'<p class="ag-label">{group_label}</p>')
-            with gr.Row(elem_classes="ag-q-row"):
-                for question in questions:
-                    chip = gr.Button(
-                        question, size="sm", scale=0, min_width=0, elem_classes="ag-q"
-                    )
-                    chip.click(
-                        _chip_handler(question),
-                        inputs=[chatbot],
-                        outputs=[chatbot, textbox],
-                    )
+    def _chip_row(questions: list[str]) -> None:
+        with gr.Row(elem_classes="ag-q-row"):
+            for question in questions:
+                chip = gr.Button(
+                    question, size="sm", scale=0, min_width=0, elem_classes="ag-q"
+                )
+                chip.click(
+                    _chip_handler(question),
+                    inputs=[chatbot],
+                    outputs=[chatbot, textbox],
+                )
+
+    _chip_row(CURATED_QUESTIONS)
+    with gr.Accordion("More questions", open=False, elem_id="ag-more-q"):
+        gr.HTML('<p class="ag-label">⚡ Instant answers — curated facts, zero wait</p>')
+        _chip_row([entry.triggers[0] for entry in INSTANT_ENTRIES])
+        gr.HTML('<p class="ag-label">🤖 Watch the AI answer live — retrieval + reasoning</p>')
+        _chip_row(LIVE_AI_QUESTIONS)
 
 
 def build_ui(
@@ -681,8 +841,7 @@ def build_ui(
     """Assemble the complete AskGeorge page: chat plus job-fit analysis.
 
     Args:
-        chat_fn: Streaming chat callable with the Gradio ChatInterface
-            signature (message, history).
+        chat_fn: Streaming chat callable with the (message, history) signature.
         jobfit_fn: Async generator taking a job description and yielding
             Markdown progress then the final report.
 
@@ -698,18 +857,20 @@ def build_ui(
         if (ASSETS_DIR / filename).exists()
     ]
     with gr.Blocks(title="AskGeorge") as demo:
-        gr.HTML(_header_html())
-        if available_cvs:
-            with gr.Row():
-                for label, path in available_cvs:
-                    gr.DownloadButton(label, value=str(path), size="sm")
-        gr.HTML(PAGE_SUBTITLE)
+        with gr.Row(elem_id="ag-topbar"):
+            gr.HTML(_topbar_left_html(), elem_classes="ag-grow")
+            for label, path in available_cvs:
+                gr.DownloadButton(
+                    label, value=str(path), size="sm", elem_classes="ag-cv"
+                )
+            gr.HTML(_topbar_right_html())
+        gr.HTML(_hero_html())
         with gr.Tabs():
             with gr.Tab("Chat with me"):
                 _build_chat_panel(chat_fn)
             with gr.Tab("Analyze a job fit"):
                 job_description = gr.Textbox(
-                    label="Job description",
+                    show_label=False,
                     placeholder="Paste the full job description here…",
                     lines=16,
                     elem_id="ag-jobfit-box",
@@ -730,7 +891,7 @@ def build_ui(
                 )
         calendar_url = booking_url()
         if calendar_url:
-            gr.HTML(_booking_html(calendar_url))
-        gr.HTML(_stack_html())
-        gr.HTML('<div id="ag-footer">AskGeorge — AI representative of George Traskas</div>')
+            with gr.Accordion("📅 Book an intro call", open=False, elem_id="ag-book"):
+                gr.HTML(_booking_iframe_html(calendar_url))
+        gr.HTML(_footer_html())
     return demo
