@@ -33,12 +33,12 @@ tests/
 └── instant_eval.py         # instant-FAQ matcher eval, gates every CI run
 ```
 
-- **LLM:** any model via [OpenRouter](https://openrouter.ai) — default `nvidia/nemotron-3-super-120b-a12b:free` (benchmarked best free tool-calling model: ~1.5–1.9s to first token, reliable tool calls, valid guardrail JSON) with reasoning effort capped at `low` for fast first tokens; switch anytime with `OPENROUTER_MODEL` / `ASKGEORGE_REASONING`
+- **LLM:** any model via [OpenRouter](https://openrouter.ai) — default `nvidia/nemotron-3-super-120b-a12b:free` (benchmarked best free tool-calling model: ~1.5–1.9s to first token, reliable tool calls, valid guardrail JSON) with reasoning effort capped at `low` for fast first tokens; switch anytime with `OPENROUTER_MODEL` / `ASKGEORGE_REASONING`. Every call carries an OpenRouter server-side fallback chain, so if the free model is rate-limited or down the request silently falls through to a cheap paid model (`OPENROUTER_FALLBACK_MODEL`, default `google/gemini-3.1-flash-lite`)
 - **Two switchable agent backends:** a from-scratch tool-calling loop and the OpenAI Agents SDK (`AGENT_BACKEND=scratch|sdk`)
 - **Input guardrail (SDK backend):** a parallel judge LLM with a Pydantic verdict blocks off-topic, dangerous, and prompt-injection messages before they reach the main agent (`ASKGEORGE_GUARDRAIL=0` to disable)
 - **Rate limiting:** in-memory sliding windows — 15 messages/hour per visitor, 100/day globally — with polite first-person refusals
 - **Instant FAQ answers:** the most common recruiter questions return a curated first-person reply immediately — no retrieval, no model call, no API cost — and don't consume the visitor's rate-limit budget. Matching is conservative (normalized exact + high-bar fuzzy), and a two-sided eval in CI guards against both misses and false positives
-- **Question pills:** four curated pills under the chat input, with the full catalog in a "More questions" expander split into "Quick answers" (rendered straight from the instant-FAQ catalog, so UI and matcher can't drift apart) and "Ask the AI live" (questions from the retrieval golden set that demonstrate the RAG + LLM pipeline). One click submits the question
+- **Question pills:** two columns under the chat input — "Quick answers" (five instant-FAQ questions) and "Ask the AI live" (five retrieval-golden-set questions that demonstrate the RAG + LLM pipeline). One click submits the question, and the CI eval asserts every FAQ pill has an instant answer and every live pill reaches the model
 - **Job-fit analysis:** a dedicated tab where a recruiter pastes a job description; a structured pipeline (parse → per-requirement RAG judgment via `asyncio.gather` → deterministic band → synthesis → anti-flattery verifier) returns an honest, evidence-backed fit report and emails George each run. The description is treated as untrusted input
 - **RAG:** hybrid dense + sparse (BM25) retrieval, embedded locally with FastEmbed and fused in `QdrantClient(":memory:")`; heading-aware chunking; the summary stays pinned in the prompt; a retrieval golden-set eval gates every CI run
 - **UI:** Gradio Blocks with a custom Aegean Minimal theme; the header portrait and the per-role Download CV buttons appear when `ui/assets/` holds `photo.jpg` and the two CV PDFs named in [`ui/theme.py`](ui/theme.py)
@@ -112,6 +112,7 @@ Every push runs lint + smoke tests via GitHub Actions; pushes to `master` auto-d
 | --- | --- | --- |
 | `OPENROUTER_API_KEY` | yes | OpenRouter API key (openrouter.ai/keys) |
 | `OPENROUTER_MODEL` | no | Override the chat model (default `nvidia/nemotron-3-super-120b-a12b:free`) |
+| `OPENROUTER_FALLBACK_MODEL` | no | Override the paid fallback model (default `google/gemini-3.1-flash-lite`) |
 | `JOBFIT_MODEL` | no | Override the job-fit model (defaults to the chat model) |
 | `ASKGEORGE_REASONING` | no | Reasoning effort for thinking models (default `low`; e.g. `medium`, `high`) |
 | `AGENT_BACKEND` | no | `sdk` (default, OpenAI Agents SDK) or `scratch` (from-scratch loop) |

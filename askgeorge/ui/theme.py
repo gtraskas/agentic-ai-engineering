@@ -19,7 +19,7 @@ from typing import Any
 import gradio as gr
 
 from askgeorge.core.config import ASSETS_DIR, booking_url
-from askgeorge.core.instant import INSTANT_ENTRIES, InstantFAQ
+from askgeorge.core.instant import InstantFAQ
 from askgeorge.core.ratelimit import RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -40,21 +40,24 @@ CV_FILES: list[tuple[str, str]] = [
     ("Data CV", "Georgios_Traskas_Data_Scientist.pdf"),
 ]
 
-# Questions that showcase the live RAG + LLM pipeline. Each appears in the
-# retrieval golden set (tests/retrieval_eval.py), so retrieval is known-good.
+# Left column: instant-FAQ questions, each a canonical InstantFAQ trigger.
+FAQ_PILLS: list[str] = [
+    "What do you do?",
+    "Tell me about your most recent project.",
+    "What do your clients say about working with you?",
+    "What is your notice period?",
+    "Can I talk to the real George?",
+]
+
+# Right column: questions that showcase the live RAG + LLM pipeline. Each
+# appears in the retrieval golden set (tests/retrieval_eval.py), so
+# retrieval is known-good.
 LIVE_AI_QUESTIONS: list[str] = [
     "How did you reduce alert noise at Predictive Fitness?",
     "Do you know Kubernetes?",
     "How does the job-fit analysis work?",
-]
-
-# The four pills shown under the input: two instant, two live-AI. The full
-# catalog stays one click away in the "More questions" expander.
-CURATED_QUESTIONS: list[str] = [
-    "What do you do?",
-    "Can I talk to the real George?",
-    "How did you reduce alert noise at Predictive Fitness?",
-    "Do you know Kubernetes?",
+    "What went wrong with tool selection in the MCP server?",
+    "How does your causal inference work help marketing teams?",
 ]
 
 CHAT_PLACEHOLDER: str = "Ask about my experience and projects. I answer as George."
@@ -329,51 +332,34 @@ footer {{
     border-radius: 12px !important;
     margin: 6px !important;
 }}
-/* ---------- Question pills ---------- */
-.ag-q-row {{
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 7px;
-    margin: 4px 0 2px 0;
+/* ---------- Question pills: two columns, FAQ left, live AI right ---------- */
+#ag-qcols {{
+    margin-top: 10px;
+    gap: 22px;
+    align-items: flex-start;
 }}
-#ag-more-q .ag-q-row {{
-    justify-content: flex-start;
-    margin-bottom: 12px;
+#ag-qcols .ag-label {{
+    margin: 2px 0 4px 2px;
+}}
+#ag-qcols .ag-qcol {{
+    gap: 6px !important;
 }}
 button.ag-q {{
-    flex: 0 0 auto;
-    width: auto;
+    width: 100%;
+    text-align: left;
+    justify-content: flex-start !important;
     font-size: 0.8rem !important;
     font-weight: 500 !important;
     color: var(--ag-muted) !important;
     background: transparent !important;
     border: 1px solid var(--ag-border) !important;
-    border-radius: 999px !important;
-    padding: 5px 13px !important;
+    border-radius: 10px !important;
+    padding: 7px 13px !important;
     box-shadow: none !important;
     transition: border-color 0.15s ease, color 0.15s ease;
 }}
 button.ag-q:hover {{
     border-color: var(--ag-accent) !important;
-    color: var(--ag-accent) !important;
-}}
-/* "More questions" expander: quiet, borderless */
-#ag-more-q {{
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-}}
-#ag-more-q > button {{
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    color: var(--ag-subtle) !important;
-    font-size: 0.8rem !important;
-    font-weight: 500 !important;
-    justify-content: center !important;
-}}
-#ag-more-q > button:hover {{
     color: var(--ag-accent) !important;
 }}
 /* ---------- Job-fit tab ---------- */
@@ -801,24 +787,20 @@ def _build_chat_panel(chat_fn: Callable[..., Any]) -> None:
 
         return handler_sync
 
-    def _chip_row(questions: list[str]) -> None:
-        with gr.Row(elem_classes="ag-q-row"):
+    def _chip_column(label: str, questions: list[str]) -> None:
+        with gr.Column(elem_classes="ag-qcol"):
+            gr.HTML(f'<p class="ag-label">{label}</p>')
             for question in questions:
-                chip = gr.Button(
-                    question, size="sm", scale=0, min_width=0, elem_classes="ag-q"
-                )
+                chip = gr.Button(question, size="sm", elem_classes="ag-q")
                 chip.click(
                     _chip_handler(question),
                     inputs=[chatbot],
                     outputs=[chatbot, textbox],
                 )
 
-    _chip_row(CURATED_QUESTIONS)
-    with gr.Accordion("More questions", open=False, elem_id="ag-more-q"):
-        gr.HTML('<p class="ag-label">Quick answers</p>')
-        _chip_row([entry.triggers[0] for entry in INSTANT_ENTRIES])
-        gr.HTML('<p class="ag-label">Ask the AI live</p>')
-        _chip_row(LIVE_AI_QUESTIONS)
+    with gr.Row(elem_id="ag-qcols"):
+        _chip_column("Quick answers", FAQ_PILLS)
+        _chip_column("Ask the AI live", LIVE_AI_QUESTIONS)
 
 
 def build_ui(

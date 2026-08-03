@@ -28,7 +28,7 @@ from askgeorge.core.config import (
     OPENROUTER_BASE_URL,
     chat_model,
     guardrail_enabled,
-    reasoning_extra_body,
+    openrouter_extra_body,
     temperature,
 )
 from askgeorge.core.guardrail import GUARDRAIL_REFUSAL, build_scope_guardrail
@@ -64,7 +64,7 @@ class SdkAgent:
             instructions=build_system_prompt(profile),
             model=model,
             model_settings=ModelSettings(
-                temperature=temperature(), extra_body=reasoning_extra_body()
+                temperature=temperature(), extra_body=openrouter_extra_body()
             ),
             tools=self._build_tools(dispatcher),
             input_guardrails=guardrails,

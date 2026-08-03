@@ -65,6 +65,14 @@ def main() -> int:
     """
     faq = InstantFAQ()
     failures: list[str] = []
+    from askgeorge.ui.theme import FAQ_PILLS, LIVE_AI_QUESTIONS
+
+    for pill in FAQ_PILLS:
+        if faq.match(pill) is None:
+            failures.append(f"UI DRIFT: FAQ pill {pill!r} has no instant answer")
+    for pill in LIVE_AI_QUESTIONS:
+        if faq.match(pill) is not None:
+            failures.append(f"UI DRIFT: live-AI pill {pill!r} is answered instantly")
     for message, needle in MUST_MATCH:
         reply = faq.match(message)
         if reply is None:
@@ -74,7 +82,12 @@ def main() -> int:
     for message in MUST_PASS_THROUGH:
         if faq.match(message) is not None:
             failures.append(f"FALSE POSITIVE: {message!r} - must reach the LLM")
-    total = len(MUST_MATCH) + len(MUST_PASS_THROUGH)
+    total = (
+        len(MUST_MATCH)
+        + len(MUST_PASS_THROUGH)
+        + len(FAQ_PILLS)
+        + len(LIVE_AI_QUESTIONS)
+    )
     print(f"instant eval: {total - len(failures)}/{total} passed")
     for failure in failures:
         print(f"  {failure}")

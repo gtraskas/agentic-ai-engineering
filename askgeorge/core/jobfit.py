@@ -30,6 +30,7 @@ from askgeorge.core.config import (
     OPENROUTER_BASE_URL,
     jobfit_model,
     openrouter_api_key,
+    openrouter_extra_body,
 )
 from askgeorge.core.knowledge import BackgroundKnowledge
 from askgeorge.core.notifier import EmailNotifier
@@ -366,6 +367,7 @@ class JobFitAnalyzer:
                 messages=messages,
                 response_format=schema,
                 temperature=temperature,
+                extra_body=openrouter_extra_body(self._model),
             )
             parsed = completion.choices[0].message.parsed
             if parsed is not None:
@@ -385,6 +387,7 @@ class JobFitAnalyzer:
             messages=fallback_messages,
             response_format={"type": "json_object"},
             temperature=temperature,
+            extra_body=openrouter_extra_body(self._model),
         )
         raw = completion.choices[0].message.content or "{}"
         return schema.model_validate_json(raw)
