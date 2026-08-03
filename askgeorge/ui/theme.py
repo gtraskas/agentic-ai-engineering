@@ -329,25 +329,32 @@ footer {{
     padding: 4px 8px;
     white-space: nowrap;
 }}
-/* ---------- Input ---------- */
-#ag-chat-input {{
+/* ---------- Input row: optional name + message ---------- */
+#ag-input-row {{
+    gap: 10px;
+    align-items: stretch;
+}}
+#ag-chat-input, #ag-name-input {{
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
 }}
-#ag-chat-input .input-container {{
+#ag-chat-input .input-container, #ag-name-input .input-container {{
     background: var(--ag-surface) !important;
     border: 1px solid var(--ag-border) !important;
     border-radius: 16px !important;
     box-shadow: 0 2px 10px var(--ag-shadow) !important;
 }}
-#ag-chat-input textarea {{
+#ag-chat-input textarea, #ag-name-input textarea {{
     background: transparent !important;
     color: var(--ag-ink) !important;
     padding: 13px 16px !important;
 }}
-#ag-chat-input textarea::placeholder {{
+#ag-chat-input textarea::placeholder, #ag-name-input textarea::placeholder {{
     color: var(--ag-subtle) !important;
+}}
+#ag-name-input textarea {{
+    font-size: 0.85rem !important;
 }}
 #ag-chat-input button.submit-button {{
     background: var(--ag-accent) !important;
@@ -681,18 +688,35 @@ def _visitor_ip(request: gr.Request | None) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def _clean_name(name: str | None) -> str:
+    """Normalize the optional visitor name: collapse whitespace, cap length."""
+    return " ".join((name or "").split())[:60]
+
+
+def _with_name(message: str, name: str) -> str:
+    """Attach the visitor's name as a bracketed note the prompt rules expect."""
+    if not name:
+        return message
+    return f"{message}\n\n[The visitor's name: {name}]"
+
+
 def _wrap_chat(
     chat_fn: Callable[..., Any], limiter: RateLimiter, instant: InstantFAQ
 ) -> Callable[..., Any]:
     """Wrap the chat function with instant answers and rate limiting.
 
-    Instant FAQ matches are checked first and served immediately — they cost
-    nothing, so they bypass the rate limiter and never consume a visitor's
-    message budget. Everything else passes the limiter, then the agent.
+    Instant FAQ matches are checked first (on the raw message, so the
+    matcher stays exact) and served immediately — they cost nothing, so
+    they bypass the rate limiter and never consume a visitor's message
+    budget. Everything else passes the limiter, then reaches the agent
+    with the visitor's name attached, so replies can address them and
+    contact notifications carry who was asking.
     """
     if inspect.isasyncgenfunction(chat_fn):
 
-        async def async_wrapper(message: str, history: list, request: gr.Request):
+        async def async_wrapper(
+            message: str, history: list, request: gr.Request, name: str = ""
+        ):
             instant_reply = instant.match(message)
             if instant_reply:
                 yield instant_reply
@@ -701,12 +725,12 @@ def _wrap_chat(
             if refusal:
                 yield refusal
                 return
-            async for partial in chat_fn(message, history):
+            async for partial in chat_fn(_with_name(message, name), history):
                 yield partial
 
         return async_wrapper
 
-    def sync_wrapper(message: str, history: list, request: gr.Request):
+    def sync_wrapper(message: str, history: list, request: gr.Request, name: str = ""):
         instant_reply = instant.match(message)
         if instant_reply:
             yield instant_reply
@@ -715,7 +739,7 @@ def _wrap_chat(
         if refusal:
             yield refusal
             return
-        yield from chat_fn(message, history)
+        yield from chat_fn(_with_name(message, name), history)
 
     return sync_wrapper
 
@@ -760,7 +784,9 @@ def _make_responder(chat_fn: Callable[..., Any]) -> Callable[..., Any]:
 
     if inspect.isasyncgenfunction(chat_fn):
 
-        async def respond_async(message: str, history: list | None, request: gr.Request):
+        async def respond_async(
+            message: str, history: list | None, name: str, request: gr.Request
+        ):
             message = (message or "").strip()
             history = history or []
             if not message:
@@ -768,12 +794,12 @@ def _make_responder(chat_fn: Callable[..., Any]) -> Callable[..., Any]:
                 return
             shown = [*history, {"role": "user", "content": message}]
             yield shown, ""
-            async for partial in chat_fn(message, history, request):
+            async for partial in chat_fn(message, history, request, _clean_name(name)):
                 yield [*shown, {"role": "assistant", "content": partial}], ""
 
         return respond_async
 
-    def respond_sync(message: str, history: list | None, request: gr.Request):
+    def respond_sync(message: str, history: list | None, name: str, request: gr.Request):
         message = (message or "").strip()
         history = history or []
         if not message:
@@ -781,7 +807,7 @@ def _make_responder(chat_fn: Callable[..., Any]) -> Callable[..., Any]:
             return
         shown = [*history, {"role": "user", "content": message}]
         yield shown, ""
-        for partial in chat_fn(message, history, request):
+        for partial in chat_fn(message, history, request, _clean_name(name)):
             yield [*shown, {"role": "assistant", "content": partial}], ""
 
     return respond_sync
@@ -789,7 +815,7 @@ def _make_responder(chat_fn: Callable[..., Any]) -> Callable[..., Any]:
 
 def _build_chat_panel(
     chat_fn: Callable[..., Any],
-) -> tuple[gr.Chatbot, gr.BrowserState]:
+) -> tuple[gr.Chatbot, gr.BrowserState, gr.Textbox, gr.BrowserState]:
     """Assemble the chat tab: chatbot, input, curated pills, and the expander.
 
     A custom Blocks chat rather than gr.ChatInterface: the question pills
@@ -802,11 +828,13 @@ def _build_chat_panel(
     exchange saves the history; Clear chat wipes screen and storage both.
 
     Returns:
-        The chatbot and its browser-persisted history state, so the caller
-        can restore the conversation on page load.
+        The chatbot, its browser-persisted history state, the visitor-name
+        textbox, and its persisted state, so the caller can restore both
+        on page load.
     """
     respond = _make_responder(chat_fn)
     saved_history = gr.BrowserState([], storage_key="ag-chat-history")
+    saved_name = gr.BrowserState("", storage_key="ag-visitor-name")
     chatbot = gr.Chatbot(
         layout="panel",
         show_label=False,
@@ -816,19 +844,33 @@ def _build_chat_panel(
         elem_id="ag-chat",
         placeholder=CHAT_PLACEHOLDER,
     )
-    textbox = gr.Textbox(
-        placeholder="Ask about my experience, projects, or availability…",
-        show_label=False,
-        submit_btn=True,
-        elem_id="ag-chat-input",
-    )
+    with gr.Row(elem_id="ag-input-row"):
+        name_box = gr.Textbox(
+            placeholder="Your name (optional)",
+            show_label=False,
+            scale=0,
+            min_width=170,
+            elem_id="ag-name-input",
+        )
+        textbox = gr.Textbox(
+            placeholder="Ask about my experience, projects, or availability…",
+            show_label=False,
+            submit_btn=True,
+            scale=1,
+            elem_id="ag-chat-input",
+        )
 
     def _save_history(history: list | None) -> list:
         """Persist the finished exchange to the visitor's browser."""
         return history or []
 
+    def _save_name(name: str | None) -> str:
+        """Persist the visitor's name to their browser."""
+        return _clean_name(name)
+
+    name_box.blur(_save_name, inputs=[name_box], outputs=[saved_name])
     textbox.submit(
-        respond, inputs=[textbox, chatbot], outputs=[chatbot, textbox]
+        respond, inputs=[textbox, chatbot, name_box], outputs=[chatbot, textbox]
     ).then(_save_history, inputs=[chatbot], outputs=[saved_history])
     with gr.Row(elem_id="ag-chat-actions"):
         clear_button = gr.Button("Clear chat", size="sm", elem_classes="ag-clear")
@@ -842,14 +884,14 @@ def _build_chat_panel(
     def _chip_handler(question: str) -> Callable[..., Any]:
         if inspect.isasyncgenfunction(respond):
 
-            async def handler_async(history: list | None, request: gr.Request):
-                async for update in respond(question, history, request):
+            async def handler_async(history: list | None, name: str, request: gr.Request):
+                async for update in respond(question, history, name, request):
                     yield update
 
             return handler_async
 
-        def handler_sync(history: list | None, request: gr.Request):
-            yield from respond(question, history, request)
+        def handler_sync(history: list | None, name: str, request: gr.Request):
+            yield from respond(question, history, name, request)
 
         return handler_sync
 
@@ -860,14 +902,14 @@ def _build_chat_panel(
                 chip = gr.Button(question, size="sm", elem_classes="ag-q")
                 chip.click(
                     _chip_handler(question),
-                    inputs=[chatbot],
+                    inputs=[chatbot, name_box],
                     outputs=[chatbot, textbox],
                 ).then(_save_history, inputs=[chatbot], outputs=[saved_history])
 
     with gr.Row(elem_id="ag-qcols"):
         _chip_column("Quick answers", FAQ_PILLS)
         _chip_column("Ask the AI live", LIVE_AI_QUESTIONS)
-    return chatbot, saved_history
+    return chatbot, saved_history, name_box, saved_name
 
 
 def build_ui(
@@ -902,7 +944,9 @@ def build_ui(
         gr.HTML(_hero_html())
         with gr.Tabs():
             with gr.Tab("Chat with me"):
-                chatbot, saved_history = _build_chat_panel(chat_fn)
+                chatbot, saved_history, name_box, saved_name = _build_chat_panel(
+                    chat_fn
+                )
             with gr.Tab("Analyze a job fit"):
                 job_description = gr.Textbox(
                     show_label=False,
@@ -930,9 +974,13 @@ def build_ui(
                 gr.HTML(_booking_iframe_html(calendar_url))
         gr.HTML(_footer_html())
 
-        def _restore_history(saved: list | None) -> list:
-            """Bring the visitor's stored conversation back on page load."""
-            return saved or []
+        def _restore_session(saved: list | None, name: str | None) -> tuple[list, str]:
+            """Bring the stored conversation and name back on page load."""
+            return saved or [], name or ""
 
-        demo.load(_restore_history, inputs=[saved_history], outputs=[chatbot])
+        demo.load(
+            _restore_session,
+            inputs=[saved_history, saved_name],
+            outputs=[chatbot, name_box],
+        )
     return demo
