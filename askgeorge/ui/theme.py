@@ -255,21 +255,33 @@ footer {{
     margin: 0 auto;
     line-height: 1.55;
 }}
-/* ---------- Onboarding tip: small card, remembered in the browser ---------- */
+/* ---------- Onboarding tour: anchored cards, remembered in the browser ---------- */
 #ag-hint {{
     display: none; /* agInitHint shows it unless previously dismissed */
+    position: absolute;
+    z-index: 60;
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
-    width: fit-content;
-    max-width: 360px;
-    margin: 18px auto 0 auto;
+    width: 300px;
     padding: 14px 16px 12px 16px;
     background: var(--ag-surface);
     border: 1px solid var(--ag-border);
     border-radius: 14px;
     box-shadow: 0 6px 24px var(--ag-shadow);
     text-align: left;
+}}
+#ag-hint::before {{
+    content: "";
+    position: absolute;
+    top: -7px;
+    left: var(--caret-x, 24px);
+    width: 12px;
+    height: 12px;
+    background: var(--ag-surface);
+    border-left: 1px solid var(--ag-border);
+    border-top: 1px solid var(--ag-border);
+    transform: rotate(45deg);
 }}
 #ag-hint .ag-hint-eyebrow {{
     font-size: 0.64rem;
@@ -288,9 +300,15 @@ footer {{
 #ag-hint b {{
     color: var(--ag-ink);
 }}
+#ag-hint .ag-hint-actions {{
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    width: 100%;
+}}
 #ag-hint .ag-hint-btn {{
     cursor: pointer;
-    align-self: flex-end;
     background: var(--ag-accent);
     color: #FFFFFF;
     border: none;
@@ -302,6 +320,18 @@ footer {{
 }}
 #ag-hint .ag-hint-btn:hover {{
     filter: brightness(1.08);
+}}
+#ag-hint .ag-hint-skip {{
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    color: var(--ag-subtle);
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 6px 4px;
+}}
+#ag-hint .ag-hint-skip:hover {{
+    color: var(--ag-accent);
 }}
 /* ---------- Tabs: minimal centered switch ----------
    No width override: Gradio 6 measures the tablist for its overflow
@@ -637,24 +667,86 @@ _THEME_HEAD: str = (
     "</script>"
 )
 
-# The hint starts hidden and is shown only for visitors who have not
-# dismissed it; Gradio mounts the DOM asynchronously, hence the retries.
-_HINT_HEAD: str = (
-    "<script>"
-    "window.agDismissHint = function () {"
-    'localStorage.setItem("ag-hint-dismissed", "1");'
-    'var hint = document.getElementById("ag-hint");'
-    'if (hint) { hint.style.display = "none"; }'
-    "};"
-    "window.agInitHint = function () {"
-    'var hint = document.getElementById("ag-hint");'
-    'if (hint && localStorage.getItem("ag-hint-dismissed") !== "1") {'
-    'hint.style.display = "flex";'
-    "}};"
-    "setTimeout(window.agInitHint, 600);"
-    "setTimeout(window.agInitHint, 1600);"
-    "</script>"
-)
+# A two-step tour anchored to its targets: the name field, then the
+# job-fit tab. Shown once per browser; Gradio mounts the DOM
+# asynchronously, hence the init retries. The card is moved onto
+# document.body on first show so absolute page coordinates apply.
+_HINT_HEAD: str = """
+<script>
+window.agHintSteps = [
+  {
+    text: "Add your <b>name</b> here and I will address you personally " +
+          "through the whole conversation.",
+    button: "Next",
+    target: function () { return document.getElementById("ag-name-input"); }
+  },
+  {
+    text: "Paste a job description in <b>Analyze a job fit</b> and get an " +
+          "honest, requirement-by-requirement fit report.",
+    button: "Got it",
+    target: function () {
+      var tabs = document.querySelectorAll('button[role="tab"]');
+      for (var i = 0; i < tabs.length; i++) {
+        if (tabs[i].textContent.indexOf("job fit") !== -1) { return tabs[i]; }
+      }
+      return null;
+    }
+  }
+];
+window.agHintIdx = 0;
+window.agHintShow = function (index) {
+  var hint = document.getElementById("ag-hint");
+  var step = window.agHintSteps[index];
+  if (!hint || !step) { window.agDismissHint(); return; }
+  window.agHintIdx = index;
+  if (hint.parentElement !== document.body) { document.body.appendChild(hint); }
+  document.getElementById("ag-hint-step").textContent =
+    "Tip " + (index + 1) + " of " + window.agHintSteps.length;
+  document.getElementById("ag-hint-text").innerHTML = step.text;
+  document.getElementById("ag-hint-next").textContent = step.button;
+  hint.style.display = "flex";
+  var target = step.target();
+  if (target) {
+    var rect = target.getBoundingClientRect();
+    var cardWidth = 300;
+    var center = rect.left + rect.width / 2;
+    var left = Math.max(
+      12, Math.min(center - cardWidth / 2, window.innerWidth - cardWidth - 12)
+    );
+    hint.style.top = (rect.bottom + window.scrollY + 12) + "px";
+    hint.style.left = (left + window.scrollX) + "px";
+    hint.style.setProperty("--caret-x", (center - left - 6) + "px");
+  }
+};
+window.agHintNext = function () {
+  if (window.agHintIdx + 1 < window.agHintSteps.length) {
+    window.agHintShow(window.agHintIdx + 1);
+  } else {
+    window.agDismissHint();
+  }
+};
+window.agDismissHint = function () {
+  localStorage.setItem("ag-hint-dismissed", "1");
+  var hint = document.getElementById("ag-hint");
+  if (hint) { hint.style.display = "none"; }
+};
+window.agInitHint = function () {
+  var hint = document.getElementById("ag-hint");
+  if (hint && hint.style.display === "" &&
+      localStorage.getItem("ag-hint-dismissed") !== "1") {
+    window.agHintShow(0);
+  }
+};
+window.addEventListener("resize", function () {
+  var hint = document.getElementById("ag-hint");
+  if (hint && hint.style.display === "flex") {
+    window.agHintShow(window.agHintIdx);
+  }
+});
+setTimeout(window.agInitHint, 800);
+setTimeout(window.agInitHint, 1800);
+</script>
+"""
 
 
 def serve_kwargs() -> dict[str, Any]:
@@ -1051,12 +1143,13 @@ def build_ui(
         gr.HTML(_hero_html())
         gr.HTML(
             '<div id="ag-hint" role="note">'
-            '<p class="ag-hint-eyebrow">Tip</p>'
-            '<p class="ag-hint-text">Paste a job description in '
-            "<b>Analyze a job fit</b> and get an honest, "
-            "requirement-by-requirement fit report.</p>"
-            '<button class="ag-hint-btn" onclick="agDismissHint()">Got it</button>'
-            "</div>"
+            '<p class="ag-hint-eyebrow" id="ag-hint-step"></p>'
+            '<p class="ag-hint-text" id="ag-hint-text"></p>'
+            '<div class="ag-hint-actions">'
+            '<button class="ag-hint-skip" onclick="agDismissHint()">Skip</button>'
+            '<button class="ag-hint-btn" id="ag-hint-next" onclick="agHintNext()">'
+            "Next</button>"
+            "</div></div>"
         )
         with gr.Tabs():
             with gr.Tab("Chat with me"):
