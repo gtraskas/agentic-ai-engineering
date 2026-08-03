@@ -134,6 +134,20 @@ footer {{
 }}
 #ag-topbar .ag-grow {{
     flex: 1 1 auto !important;
+    overflow: hidden;
+}}
+/* Gradio wraps input components in a .form block with its own chrome */
+#ag-topbar .form {{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    flex: 0 0 auto !important;
+    width: 140px !important;
+    min-width: 0 !important;
+}}
+#ag-topbar #ag-name-input {{
+    width: 140px !important;
+    padding: 0 !important;
 }}
 #ag-topbar .ag-wordmark {{
     font-size: 1.05rem;
@@ -144,13 +158,15 @@ footer {{
     white-space: nowrap;
 }}
 #ag-topbar .ag-tagline {{
-    font-size: 0.66rem;
+    font-size: 0.62rem;
     font-weight: 600;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     color: var(--ag-subtle);
     margin: 2px 0 0 0;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }}
 #ag-hero .ag-status {{
     font-size: 0.68rem;
@@ -161,11 +177,11 @@ footer {{
     margin: 18px 0 0 0;
 }}
 #ag-topbar a.ag-link {{
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     font-weight: 600;
     color: var(--ag-muted);
     text-decoration: none;
-    margin-left: 12px;
+    margin-left: 6px;
     white-space: nowrap;
 }}
 #ag-topbar a.ag-link:hover {{
@@ -174,13 +190,13 @@ footer {{
 #ag-topbar button.ag-cv {{
     width: auto;
     flex: 0 0 auto;
-    font-size: 0.78rem !important;
+    font-size: 0.76rem !important;
     font-weight: 600 !important;
     color: var(--ag-muted) !important;
     background: transparent !important;
     border: 1px solid var(--ag-border) !important;
     border-radius: 999px !important;
-    padding: 4px 12px !important;
+    padding: 3px 10px !important;
     box-shadow: none !important;
 }}
 #ag-topbar button.ag-cv:hover {{
@@ -238,6 +254,84 @@ footer {{
     max-width: 34rem;
     margin: 0 auto;
     line-height: 1.55;
+}}
+/* ---------- Onboarding tour: anchored cards, remembered in the browser ---------- */
+#ag-hint {{
+    display: none; /* agInitHint shows it unless previously dismissed */
+    position: absolute;
+    z-index: 60;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    width: 300px;
+    padding: 14px 16px 12px 16px;
+    background: var(--ag-surface);
+    border: 1px solid var(--ag-border);
+    border-radius: 14px;
+    box-shadow: 0 6px 24px var(--ag-shadow);
+    text-align: left;
+}}
+#ag-hint::before {{
+    content: "";
+    position: absolute;
+    top: -7px;
+    left: var(--caret-x, 24px);
+    width: 12px;
+    height: 12px;
+    background: var(--ag-surface);
+    border-left: 1px solid var(--ag-border);
+    border-top: 1px solid var(--ag-border);
+    transform: rotate(45deg);
+}}
+#ag-hint .ag-hint-eyebrow {{
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--ag-accent);
+    margin: 0;
+}}
+#ag-hint .ag-hint-text {{
+    font-size: 0.84rem;
+    line-height: 1.5;
+    color: var(--ag-body);
+    margin: 0;
+}}
+#ag-hint b {{
+    color: var(--ag-ink);
+}}
+#ag-hint .ag-hint-actions {{
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    width: 100%;
+}}
+#ag-hint .ag-hint-btn {{
+    cursor: pointer;
+    background: var(--ag-accent);
+    color: #FFFFFF;
+    border: none;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    padding: 6px 16px;
+    transition: filter 0.15s ease;
+}}
+#ag-hint .ag-hint-btn:hover {{
+    filter: brightness(1.08);
+}}
+#ag-hint .ag-hint-skip {{
+    cursor: pointer;
+    background: transparent;
+    border: none;
+    color: var(--ag-subtle);
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 6px 4px;
+}}
+#ag-hint .ag-hint-skip:hover {{
+    color: var(--ag-accent);
 }}
 /* ---------- Tabs: minimal centered switch ----------
    No width override: Gradio 6 measures the tablist for its overflow
@@ -347,6 +441,27 @@ footer {{
     padding: 13px 16px !important;
 }}
 #ag-chat-input textarea::placeholder {{
+    color: var(--ag-subtle) !important;
+}}
+/* Compact visitor-name field in the top bar, styled like the CV pills */
+#ag-name-input {{
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}}
+#ag-name-input .input-container {{
+    background: transparent !important;
+    border: 1px solid var(--ag-border) !important;
+    border-radius: 999px !important;
+    box-shadow: none !important;
+}}
+#ag-name-input input, #ag-name-input textarea {{
+    background: transparent !important;
+    color: var(--ag-ink) !important;
+    font-size: 0.78rem !important;
+    padding: 5px 14px !important;
+}}
+#ag-name-input input::placeholder, #ag-name-input textarea::placeholder {{
     color: var(--ag-subtle) !important;
 }}
 #ag-chat-input button.submit-button {{
@@ -552,6 +667,87 @@ _THEME_HEAD: str = (
     "</script>"
 )
 
+# A two-step tour anchored to its targets: the name field, then the
+# job-fit tab. Shown once per browser; Gradio mounts the DOM
+# asynchronously, hence the init retries. The card is moved onto
+# document.body on first show so absolute page coordinates apply.
+_HINT_HEAD: str = """
+<script>
+window.agHintSteps = [
+  {
+    text: "Add your <b>name</b> here and I will address you personally " +
+          "through the whole conversation.",
+    button: "Next",
+    target: function () { return document.getElementById("ag-name-input"); }
+  },
+  {
+    text: "Paste a job description in <b>Analyze a job fit</b> and get an " +
+          "honest, requirement-by-requirement fit report.",
+    button: "Got it",
+    target: function () {
+      var tabs = document.querySelectorAll('button[role="tab"]');
+      for (var i = 0; i < tabs.length; i++) {
+        if (tabs[i].textContent.indexOf("job fit") !== -1) { return tabs[i]; }
+      }
+      return null;
+    }
+  }
+];
+window.agHintIdx = 0;
+window.agHintShow = function (index) {
+  var hint = document.getElementById("ag-hint");
+  var step = window.agHintSteps[index];
+  if (!hint || !step) { window.agDismissHint(); return; }
+  window.agHintIdx = index;
+  if (hint.parentElement !== document.body) { document.body.appendChild(hint); }
+  document.getElementById("ag-hint-step").textContent =
+    "Tip " + (index + 1) + " of " + window.agHintSteps.length;
+  document.getElementById("ag-hint-text").innerHTML = step.text;
+  document.getElementById("ag-hint-next").textContent = step.button;
+  hint.style.display = "flex";
+  var target = step.target();
+  if (target) {
+    var rect = target.getBoundingClientRect();
+    var cardWidth = 300;
+    var center = rect.left + rect.width / 2;
+    var left = Math.max(
+      12, Math.min(center - cardWidth / 2, window.innerWidth - cardWidth - 12)
+    );
+    hint.style.top = (rect.bottom + window.scrollY + 12) + "px";
+    hint.style.left = (left + window.scrollX) + "px";
+    hint.style.setProperty("--caret-x", (center - left - 6) + "px");
+  }
+};
+window.agHintNext = function () {
+  if (window.agHintIdx + 1 < window.agHintSteps.length) {
+    window.agHintShow(window.agHintIdx + 1);
+  } else {
+    window.agDismissHint();
+  }
+};
+window.agDismissHint = function () {
+  localStorage.setItem("ag-hint-dismissed", "1");
+  var hint = document.getElementById("ag-hint");
+  if (hint) { hint.style.display = "none"; }
+};
+window.agInitHint = function () {
+  var hint = document.getElementById("ag-hint");
+  if (hint && hint.style.display === "" &&
+      localStorage.getItem("ag-hint-dismissed") !== "1") {
+    window.agHintShow(0);
+  }
+};
+window.addEventListener("resize", function () {
+  var hint = document.getElementById("ag-hint");
+  if (hint && hint.style.display === "flex") {
+    window.agHintShow(window.agHintIdx);
+  }
+});
+setTimeout(window.agInitHint, 800);
+setTimeout(window.agInitHint, 1800);
+</script>
+"""
+
 
 def serve_kwargs() -> dict[str, Any]:
     """Return the theme/css/head kwargs for ``launch()`` or ``mount_gradio_app()``.
@@ -561,7 +757,7 @@ def serve_kwargs() -> dict[str, Any]:
     return {
         "theme": build_theme(),
         "css": AEGEAN_CSS,
-        "head": _THEME_HEAD,
+        "head": _THEME_HEAD + _HINT_HEAD,
     }
 
 
@@ -581,7 +777,7 @@ def _topbar_left_html() -> str:
     return """
     <div>
         <p class="ag-wordmark">George Traskas</p>
-        <p class="ag-tagline">Data Scientist · AI/ML Engineer</p>
+        <p class="ag-tagline">AI/ML · Data Science</p>
     </div>
     """
 
@@ -681,18 +877,35 @@ def _visitor_ip(request: gr.Request | None) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def _clean_name(name: str | None) -> str:
+    """Normalize the optional visitor name: collapse whitespace, cap length."""
+    return " ".join((name or "").split())[:60]
+
+
+def _with_name(message: str, name: str) -> str:
+    """Attach the visitor's name as a bracketed note the prompt rules expect."""
+    if not name:
+        return message
+    return f"{message}\n\n[The visitor's name: {name}]"
+
+
 def _wrap_chat(
     chat_fn: Callable[..., Any], limiter: RateLimiter, instant: InstantFAQ
 ) -> Callable[..., Any]:
     """Wrap the chat function with instant answers and rate limiting.
 
-    Instant FAQ matches are checked first and served immediately — they cost
-    nothing, so they bypass the rate limiter and never consume a visitor's
-    message budget. Everything else passes the limiter, then the agent.
+    Instant FAQ matches are checked first (on the raw message, so the
+    matcher stays exact) and served immediately — they cost nothing, so
+    they bypass the rate limiter and never consume a visitor's message
+    budget. Everything else passes the limiter, then reaches the agent
+    with the visitor's name attached, so replies can address them and
+    contact notifications carry who was asking.
     """
     if inspect.isasyncgenfunction(chat_fn):
 
-        async def async_wrapper(message: str, history: list, request: gr.Request):
+        async def async_wrapper(
+            message: str, history: list, request: gr.Request, name: str = ""
+        ):
             instant_reply = instant.match(message)
             if instant_reply:
                 yield instant_reply
@@ -701,12 +914,12 @@ def _wrap_chat(
             if refusal:
                 yield refusal
                 return
-            async for partial in chat_fn(message, history):
+            async for partial in chat_fn(_with_name(message, name), history):
                 yield partial
 
         return async_wrapper
 
-    def sync_wrapper(message: str, history: list, request: gr.Request):
+    def sync_wrapper(message: str, history: list, request: gr.Request, name: str = ""):
         instant_reply = instant.match(message)
         if instant_reply:
             yield instant_reply
@@ -715,7 +928,7 @@ def _wrap_chat(
         if refusal:
             yield refusal
             return
-        yield from chat_fn(message, history)
+        yield from chat_fn(_with_name(message, name), history)
 
     return sync_wrapper
 
@@ -760,7 +973,9 @@ def _make_responder(chat_fn: Callable[..., Any]) -> Callable[..., Any]:
 
     if inspect.isasyncgenfunction(chat_fn):
 
-        async def respond_async(message: str, history: list | None, request: gr.Request):
+        async def respond_async(
+            message: str, history: list | None, name: str, request: gr.Request
+        ):
             message = (message or "").strip()
             history = history or []
             if not message:
@@ -768,12 +983,12 @@ def _make_responder(chat_fn: Callable[..., Any]) -> Callable[..., Any]:
                 return
             shown = [*history, {"role": "user", "content": message}]
             yield shown, ""
-            async for partial in chat_fn(message, history, request):
+            async for partial in chat_fn(message, history, request, _clean_name(name)):
                 yield [*shown, {"role": "assistant", "content": partial}], ""
 
         return respond_async
 
-    def respond_sync(message: str, history: list | None, request: gr.Request):
+    def respond_sync(message: str, history: list | None, name: str, request: gr.Request):
         message = (message or "").strip()
         history = history or []
         if not message:
@@ -781,23 +996,41 @@ def _make_responder(chat_fn: Callable[..., Any]) -> Callable[..., Any]:
             return
         shown = [*history, {"role": "user", "content": message}]
         yield shown, ""
-        for partial in chat_fn(message, history, request):
+        for partial in chat_fn(message, history, request, _clean_name(name)):
             yield [*shown, {"role": "assistant", "content": partial}], ""
 
     return respond_sync
 
 
-def _build_chat_panel(chat_fn: Callable[..., Any]) -> None:
+def _build_chat_panel(
+    chat_fn: Callable[..., Any], name_box: gr.Textbox
+) -> tuple[gr.Chatbot, gr.BrowserState]:
     """Assemble the chat tab: chatbot, input, curated pills, and the expander.
 
     A custom Blocks chat rather than gr.ChatInterface: the question pills
     must submit on click, and external components cannot trigger a
-    ChatInterface submission. Four curated pills sit under the input; the
-    full catalog lives in a collapsed "More questions" accordion whose
-    instant group renders straight from the InstantFAQ catalog, so the UI
-    can never offer a question the matcher does not answer.
+    ChatInterface submission. The pills render in two columns whose instant
+    group stays in sync with the InstantFAQ catalog via the CI eval.
+
+    The conversation persists in the visitor's own browser (localStorage
+    via gr.BrowserState) — nothing is stored server-side. Each completed
+    exchange saves the history; Clear chat wipes screen and storage both.
+
+    Args:
+        chat_fn: The wrapped chat callable.
+        name_box: The top-bar visitor-name textbox feeding every handler.
+
+    Returns:
+        The chatbot and its browser-persisted history state, so the caller
+        can restore the conversation on page load.
     """
     respond = _make_responder(chat_fn)
+    # The secret must be stable across server restarts (Modal scales to zero
+    # and restarts containers routinely); Gradio's default random secret
+    # would make every restart silently wipe visitors' saved conversations.
+    saved_history = gr.BrowserState(
+        [], storage_key="ag-chat-history", secret="askgeorge-browser-state-v1"
+    )
     chatbot = gr.Chatbot(
         layout="panel",
         show_label=False,
@@ -813,27 +1046,34 @@ def _build_chat_panel(chat_fn: Callable[..., Any]) -> None:
         submit_btn=True,
         elem_id="ag-chat-input",
     )
-    textbox.submit(respond, inputs=[textbox, chatbot], outputs=[chatbot, textbox])
+
+    def _save_history(history: list | None) -> list:
+        """Persist the finished exchange to the visitor's browser."""
+        return history or []
+
+    textbox.submit(
+        respond, inputs=[textbox, chatbot, name_box], outputs=[chatbot, textbox]
+    ).then(_save_history, inputs=[chatbot], outputs=[saved_history])
     with gr.Row(elem_id="ag-chat-actions"):
         clear_button = gr.Button("Clear chat", size="sm", elem_classes="ag-clear")
 
-    def _clear_chat() -> tuple[list, str]:
-        """Wipe the conversation and the input box."""
-        return [], ""
+    def _clear_chat() -> tuple[list, str, list]:
+        """Wipe the conversation, the input box, and the stored history."""
+        return [], "", []
 
-    clear_button.click(_clear_chat, outputs=[chatbot, textbox])
+    clear_button.click(_clear_chat, outputs=[chatbot, textbox, saved_history])
 
     def _chip_handler(question: str) -> Callable[..., Any]:
         if inspect.isasyncgenfunction(respond):
 
-            async def handler_async(history: list | None, request: gr.Request):
-                async for update in respond(question, history, request):
+            async def handler_async(history: list | None, name: str, request: gr.Request):
+                async for update in respond(question, history, name, request):
                     yield update
 
             return handler_async
 
-        def handler_sync(history: list | None, request: gr.Request):
-            yield from respond(question, history, request)
+        def handler_sync(history: list | None, name: str, request: gr.Request):
+            yield from respond(question, history, name, request)
 
         return handler_sync
 
@@ -844,13 +1084,14 @@ def _build_chat_panel(chat_fn: Callable[..., Any]) -> None:
                 chip = gr.Button(question, size="sm", elem_classes="ag-q")
                 chip.click(
                     _chip_handler(question),
-                    inputs=[chatbot],
+                    inputs=[chatbot, name_box],
                     outputs=[chatbot, textbox],
-                )
+                ).then(_save_history, inputs=[chatbot], outputs=[saved_history])
 
     with gr.Row(elem_id="ag-qcols"):
         _chip_column("Quick answers", FAQ_PILLS)
         _chip_column("Ask the AI live", LIVE_AI_QUESTIONS)
+    return chatbot, saved_history
 
 
 def build_ui(
@@ -875,17 +1116,44 @@ def build_ui(
         if (ASSETS_DIR / filename).exists()
     ]
     with gr.Blocks(title="AskGeorge") as demo:
+        saved_name = gr.BrowserState(
+            "", storage_key="ag-visitor-name", secret="askgeorge-browser-state-v1"
+        )
         with gr.Row(elem_id="ag-topbar"):
             gr.HTML(_topbar_left_html(), elem_classes="ag-grow")
+            name_box = gr.Textbox(
+                placeholder="Your name",
+                show_label=False,
+                max_lines=1,
+                scale=0,
+                min_width=140,
+                elem_id="ag-name-input",
+            )
             for label, path in available_cvs:
                 gr.DownloadButton(
                     label, value=str(path), size="sm", elem_classes="ag-cv"
                 )
             gr.HTML(_topbar_right_html())
+
+        def _save_name(name: str | None) -> str:
+            """Persist the visitor's name to their browser."""
+            return _clean_name(name)
+
+        name_box.blur(_save_name, inputs=[name_box], outputs=[saved_name])
         gr.HTML(_hero_html())
+        gr.HTML(
+            '<div id="ag-hint" role="note">'
+            '<p class="ag-hint-eyebrow" id="ag-hint-step"></p>'
+            '<p class="ag-hint-text" id="ag-hint-text"></p>'
+            '<div class="ag-hint-actions">'
+            '<button class="ag-hint-skip" onclick="agDismissHint()">Skip</button>'
+            '<button class="ag-hint-btn" id="ag-hint-next" onclick="agHintNext()">'
+            "Next</button>"
+            "</div></div>"
+        )
         with gr.Tabs():
             with gr.Tab("Chat with me"):
-                _build_chat_panel(chat_fn)
+                chatbot, saved_history = _build_chat_panel(chat_fn, name_box)
             with gr.Tab("Analyze a job fit"):
                 job_description = gr.Textbox(
                     show_label=False,
@@ -912,4 +1180,14 @@ def build_ui(
             with gr.Accordion("Book an intro call", open=False, elem_id="ag-book"):
                 gr.HTML(_booking_iframe_html(calendar_url))
         gr.HTML(_footer_html())
+
+        def _restore_session(saved: list | None, name: str | None) -> tuple[list, str]:
+            """Bring the stored conversation and name back on page load."""
+            return saved or [], name or ""
+
+        demo.load(
+            _restore_session,
+            inputs=[saved_history, saved_name],
+            outputs=[chatbot, name_box],
+        )
     return demo
