@@ -99,8 +99,12 @@ body, .gradio-container {{
     background: var(--ag-canvas) !important;
     color: var(--ag-body);
 }}
+/* gradio-app is a flex container, so without an explicit width the page
+   column sizes to each tab's intrinsic content width and jumps on tab
+   switch; width: 100% pins it to max-width on every tab */
 .gradio-container {{
     max-width: 820px !important;
+    width: 100% !important;
     margin: 0 auto !important;
 }}
 /* Hide Gradio's own footer chrome */
