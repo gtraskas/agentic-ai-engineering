@@ -12,13 +12,14 @@ from __future__ import annotations
 import base64
 import inspect
 import logging
+import re
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import gradio as gr
 
-from askgeorge.core.config import ASSETS_DIR, booking_url
+from askgeorge.core.config import ASSETS_DIR, PUBLIC_BASE_URL, booking_url
 from askgeorge.core.instant import InstantFAQ
 from askgeorge.core.ratelimit import RateLimiter
 
@@ -135,6 +136,10 @@ footer {{
 #ag-topbar .ag-grow {{
     flex: 1 1 auto !important;
     overflow: hidden;
+}}
+#ag-topbar .ag-topbar-right {{
+    text-align: right;
+    white-space: nowrap;
 }}
 /* Gradio wraps input components in a .form block with its own chrome */
 #ag-topbar .form {{
@@ -612,6 +617,50 @@ button.ag-q:hover {{
 #ag-footer .ag-foot-links a:hover {{
     color: var(--ag-accent);
 }}
+/* ---------- Responsive: tablet and below ---------- */
+@media (max-width: 768px) {{
+    #ag-topbar {{
+        flex-wrap: wrap !important;
+        row-gap: 8px;
+    }}
+    #ag-qcols {{
+        flex-direction: column !important;
+        gap: 14px;
+    }}
+    #ag-hero {{
+        padding: 22px 0 4px 0;
+    }}
+}}
+/* ---------- Responsive: phones ---------- */
+@media (max-width: 480px) {{
+    #ag-topbar .ag-tagline {{
+        display: none;
+    }}
+    /* The wordmark takes its own row, so the CV pills group together */
+    #ag-topbar .ag-grow {{
+        flex: 1 1 100% !important;
+    }}
+    /* The name field takes a full row of its own at the bottom of the bar */
+    #ag-topbar .form {{
+        flex: 1 1 100% !important;
+        width: 100% !important;
+        order: 10;
+    }}
+    /* flex-grow beats the inline flex-grow: 0 Gradio puts on the block */
+    #ag-topbar #ag-name-input {{
+        width: 100% !important;
+        flex-grow: 1 !important;
+    }}
+    #ag-topbar .ag-topbar-right {{
+        white-space: normal;
+    }}
+    #ag-theme-btn {{
+        margin-left: 4px;
+    }}
+    #ag-jobfit-report {{
+        padding: 6px 14px;
+    }}
+}}
 """
 
 
@@ -638,6 +687,58 @@ def build_theme() -> gr.themes.Base:
         button_primary_text_color="#FFFFFF",
         button_primary_text_color_dark="#FFFFFF",
     )
+
+
+# Rich link previews: OpenGraph and Twitter-card tags so the URL unfurls
+# as a proper card in LinkedIn, WhatsApp, and Slack. og:image must be an
+# absolute URL to a real file; deploy_modal.py serves it from /static.
+OG_TITLE: str = "AskGeorge"
+OG_DESCRIPTION: str = (
+    "Ask George Traskas about his AI/ML and data science work, "
+    "or paste a job description and get an honest fit report."
+)
+OG_IMAGE_URL: str = f"{PUBLIC_BASE_URL}/media/og_card.jpg"
+
+_META_HEAD: str = (
+    f'<meta name="description" content="{OG_DESCRIPTION}">'
+    '<meta property="og:type" content="website">'
+    f'<meta property="og:title" content="{OG_TITLE}">'
+    f'<meta property="og:description" content="{OG_DESCRIPTION}">'
+    f'<meta property="og:url" content="{PUBLIC_BASE_URL}/">'
+    f'<meta property="og:site_name" content="{OG_TITLE}">'
+    f'<meta property="og:image" content="{OG_IMAGE_URL}">'
+    '<meta property="og:image:width" content="1200">'
+    '<meta property="og:image:height" content="630">'
+    '<meta property="og:image:alt" content="George Traskas, AI/ML and data science">'
+    '<meta name="twitter:card" content="summary_large_image">'
+    f'<meta name="twitter:title" content="{OG_TITLE}">'
+    f'<meta name="twitter:description" content="{OG_DESCRIPTION}">'
+    f'<meta name="twitter:image" content="{OG_IMAGE_URL}">'
+)
+
+# Gradio's SPA shell hardcodes its own og:/twitter: tags (Gradio branding,
+# an empty thumbnail) ahead of any custom head content, and link crawlers
+# honor the first tag they meet, so injecting via ``head`` is not enough.
+_SOCIAL_META_RE: re.Pattern[str] = re.compile(
+    r'<meta[^>]*(?:property="og:|name="twitter:|name="description")[^>]*>\s*'
+)
+
+
+def rewrite_social_meta(html: str) -> str:
+    """Replace a page's social meta tags with the AskGeorge set.
+
+    Strips every og:/twitter:/description meta tag (Gradio's stock ones and
+    any injected copy of ours) and re-inserts the AskGeorge set as the first
+    content of ``<head>``, where link crawlers expect it.
+
+    Args:
+        html: The full HTML document as served by Gradio.
+
+    Returns:
+        The document with exactly one, correctly ordered set of social tags.
+    """
+    stripped = _SOCIAL_META_RE.sub("", html)
+    return stripped.replace("<head>", f"<head>{_META_HEAD}", 1)
 
 
 # Theme bootstrapping: saved choice wins, otherwise the OS preference.
@@ -708,7 +809,7 @@ window.agHintShow = function (index) {
   var target = step.target();
   if (target) {
     var rect = target.getBoundingClientRect();
-    var cardWidth = 300;
+    var cardWidth = hint.offsetWidth || 300;
     var center = rect.left + rect.width / 2;
     var left = Math.max(
       12, Math.min(center - cardWidth / 2, window.innerWidth - cardWidth - 12)
@@ -757,7 +858,7 @@ def serve_kwargs() -> dict[str, Any]:
     return {
         "theme": build_theme(),
         "css": AEGEAN_CSS,
-        "head": _THEME_HEAD + _HINT_HEAD,
+        "head": _META_HEAD + _THEME_HEAD + _HINT_HEAD,
     }
 
 
@@ -785,7 +886,7 @@ def _topbar_left_html() -> str:
 def _topbar_right_html() -> str:
     """Build the links + theme-toggle side of the top bar."""
     return """
-    <div style="text-align: right; white-space: nowrap;">
+    <div class="ag-topbar-right">
         <a class="ag-link" href="https://www.linkedin.com/in/george-traskas/" target="_blank" rel="noopener">LinkedIn</a>
         <a class="ag-link" href="https://github.com/gtraskas" target="_blank" rel="noopener">GitHub</a>
         <a class="ag-link" href="mailto:georgiost77@gmail.com">Email</a>
