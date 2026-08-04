@@ -9,7 +9,7 @@ An AI representative for Georgios Traskas. It answers questions from recruiters 
 ```
 askgeorge/
 ├── app.py                  # entry point: build_demo() + launch
-├── deploy_modal.py         # Modal deployment (CPU, scales to zero)
+├── deploy_modal.py         # Modal deployment (CPU, one warm container)
 ├── core/
 │   ├── config.py           # paths, models, env accessors
 │   ├── profile.py          # background corpus loading
@@ -42,16 +42,23 @@ tests/
 - **Question pills:** two columns under the chat input — "Quick answers" (five instant-FAQ questions) and "Ask the AI live" (five retrieval-golden-set questions that demonstrate the RAG + LLM pipeline). One click submits the question, and the CI eval asserts every FAQ pill has an instant answer and every live pill reaches the model
 - **Job-fit analysis:** a dedicated tab where a recruiter pastes a job description; a structured pipeline (parse → per-requirement RAG judgment via `asyncio.gather` → deterministic band → synthesis → anti-flattery verifier) returns an honest, evidence-backed fit report and emails George each run. The description is treated as untrusted input
 - **RAG:** hybrid dense + sparse (BM25) retrieval, embedded locally with FastEmbed and fused in `QdrantClient(":memory:")`; heading-aware chunking; the summary stays pinned in the prompt; a retrieval golden-set eval gates every CI run
-- **UI:** Gradio Blocks with a custom Aegean Minimal theme; the header portrait and the per-role Download CV buttons appear when `ui/assets/` holds `photo.jpg` and the two CV PDFs named in [`ui/theme.py`](ui/theme.py)
+- **UI:** Gradio Blocks with a custom Aegean Minimal theme; the header portrait and the per-role Download CV buttons appear when `ui/assets/` holds `photo.jpg` and the two CV PDFs named in [`ui/theme.py`](ui/theme.py). The layout adapts down to 375 px wide phones
+- **Link previews:** OpenGraph and Twitter-card meta tags plus a preview card at `/media/og_card.jpg`, so the shared URL unfurls with a portrait, title, and description in LinkedIn, WhatsApp, and Slack
 
 ## Design decisions
 
 The reasoning behind the parts that are not obvious from the code.
 
 - **In-memory Qdrant instead of a hosted vector database.** The corpus is a handful of
-  Markdown files and static between deployments, and the app scales to zero — an
-  always-on database would cost money to sit idle. Rebuilding the index in RAM at
-  container start takes seconds and leaves nothing to operate or secure.
+  Markdown files and static between deployments — an always-on database would cost
+  money to sit idle. Rebuilding the index in RAM at container start takes seconds and
+  leaves nothing to operate or secure.
+- **One warm container instead of scale-to-zero.** The first visitor used to wait
+  ~15 s for a container boot and index build. `min_containers=1` keeps one container
+  always ready (~$10/month, inside Modal's free Starter credits), and
+  `@modal.concurrent` lets it serve all realistic traffic, so every visit is warm.
+  Memory snapshots were considered and skipped: with a warm container they would only
+  speed the rare post-deploy boot, which is not worth restructuring the serving app.
 - **The job-fit score is computed in code, not by the model.** The pipeline parses the
   job description into typed requirements, judges each one against retrieved evidence
   concurrently, then derives the overall band deterministically in Python — so a

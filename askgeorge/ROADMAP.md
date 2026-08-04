@@ -9,13 +9,12 @@ request; merging to `master` auto-deploys to Modal.
 Everything a visitor experiences in the first fifteen seconds after
 clicking the link.
 
-1. **Eliminate the cold start.** The app scales to zero, so the first
-   visitor waits ~15 s while the container boots and the RAG index builds.
-   Two measures: enable Modal memory snapshots (snapshot the imported,
-   index-built process for fast cold boots) and set `min_containers=1` so
-   one warm container is always ready (~$10/month at current Modal rates,
-   inside the Starter plan's $30/month free credits).
-   *Done when:* a cold hit renders in under ~3 s, a warm hit in under 1 s.
+1. **Eliminate the cold start.** The app scaled to zero, so the first
+   visitor waited ~15 s while the container booted and the RAG index
+   built. `min_containers=1` keeps one warm container always ready
+   (~$10/month at current Modal rates, inside the Starter plan's
+   $30/month free credits).
+   *Done when:* a visit renders in under 1 s.
 2. **Mobile pass.** Verify and fix 375 px and 768 px widths: the top bar
    (wordmark, name field, CV pills, links, theme toggle) needs a collapse
    strategy for small screens; the question-pill columns must stack; the
@@ -52,3 +51,6 @@ Chips are cleared together with the chat.
   requests, unknown questions, job-fit runs) already cover the signal.
 - **"Ping the human" button** — redundant with the contact flow and the
   booking calendar.
+- **Modal memory snapshots** — with a warm container always ready they
+  would only speed the rare post-deploy boot; not worth restructuring
+  the serving app into a snapshot-aware class.

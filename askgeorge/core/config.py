@@ -15,6 +15,8 @@ PACKAGE_DIR: Path = Path(__file__).parent.parent
 DATA_DIR: Path = PACKAGE_DIR / "me"
 ASSETS_DIR: Path = PACKAGE_DIR / "ui" / "assets"
 
+PUBLIC_BASE_URL: str = "https://gtraskas--askgeorge-web.modal.run"
+
 OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 # Fast, consistent, and cheap (~$0.10/M input tokens); with the global
 # 100-messages/day rate cap the worst-case spend is pennies. The fallback

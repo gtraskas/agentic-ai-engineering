@@ -14,7 +14,9 @@ CALENDAR_BOOKING_URL (intro-call booking link)::
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import modal
 
@@ -47,10 +49,59 @@ image = (
 )
 
 
+class RootHtmlRewriter:
+    """ASGI middleware that post-processes the landing page HTML.
+
+    Gradio's SPA shell hardcodes its own og:/twitter: meta tags ahead of any
+    custom head content, and link crawlers honor the first tag they meet, so
+    the served HTML itself must be rewritten. Only ``GET /`` is buffered and
+    rewritten; every other path, including Gradio's streaming queue, passes
+    through untouched.
+    """
+
+    def __init__(self, app: Any, rewrite: Callable[[str], str]) -> None:
+        self._app = app
+        self._rewrite = rewrite
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        """Serve one ASGI request, rewriting the root page's HTML body."""
+        if scope.get("type") != "http" or scope.get("path") != "/":
+            await self._app(scope, receive, send)
+            return
+        start_message: dict[str, Any] = {}
+        body_chunks: list[bytes] = []
+
+        async def capture(message: dict[str, Any]) -> None:
+            if message["type"] == "http.response.start":
+                start_message.update(message)
+            elif message["type"] == "http.response.body":
+                body_chunks.append(message.get("body", b""))
+
+        await self._app(scope, receive, capture)
+        body = b"".join(body_chunks)
+        headers = [
+            (name, value)
+            for name, value in start_message.get("headers", [])
+            if name.lower() != b"content-length"
+        ]
+        is_html = any(
+            value.startswith(b"text/html")
+            for name, value in headers
+            if name.lower() == b"content-type"
+        )
+        if is_html:
+            body = self._rewrite(body.decode("utf-8")).encode("utf-8")
+        headers.append((b"content-length", str(len(body)).encode("ascii")))
+        await send({**start_message, "headers": headers})
+        await send({"type": "http.response.body", "body": body})
+
+
 @app.function(
     image=image,
     secrets=[modal.Secret.from_name("askgeorge-secret")],
-    min_containers=0,
+    # One container stays warm so no visitor ever waits for a boot and
+    # index build (~$10/month, inside the Starter plan's free credits).
+    min_containers=1,
     timeout=600,
 )
 @modal.concurrent(max_inputs=100)
@@ -59,10 +110,17 @@ def web() -> FastAPI:  # noqa: F821 — imported inside the Modal container
     """Serve the Gradio chat UI as an ASGI app on Modal."""
     import gradio as gr
     from fastapi import FastAPI
+    from fastapi.staticfiles import StaticFiles
 
     from askgeorge.app import build_demo
-    from askgeorge.ui.theme import serve_kwargs
+    from askgeorge.core.config import ASSETS_DIR
+    from askgeorge.ui.theme import rewrite_social_meta, serve_kwargs
 
+    # /media serves the link-preview card (og_card.jpg). Not /static:
+    # Gradio serves its own frontend assets there.
+    fastapi_app = FastAPI()
+    fastapi_app.mount("/media", StaticFiles(directory=ASSETS_DIR), name="media")
+    fastapi_app.add_middleware(RootHtmlRewriter, rewrite=rewrite_social_meta)
     return gr.mount_gradio_app(
-        app=FastAPI(), blocks=build_demo(), path="/", **serve_kwargs()
+        app=fastapi_app, blocks=build_demo(), path="/", **serve_kwargs()
     )
