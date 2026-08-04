@@ -699,7 +699,10 @@ OG_DESCRIPTION: str = (
 )
 OG_IMAGE_URL: str = f"{PUBLIC_BASE_URL}/media/og_card.jpg"
 
+# The <title> travels with the meta set: Gradio 6 sets the tab title only
+# from JavaScript, so crawlers and search engines see no title tag at all.
 _META_HEAD: str = (
+    f"<title>{OG_TITLE}</title>"
     f'<meta name="description" content="{OG_DESCRIPTION}">'
     '<meta property="og:type" content="website">'
     f'<meta property="og:title" content="{OG_TITLE}">'
@@ -721,6 +724,7 @@ _META_HEAD: str = (
 # honor the first tag they meet, so injecting via ``head`` is not enough.
 _SOCIAL_META_RE: re.Pattern[str] = re.compile(
     r'<meta[^>]*(?:property="og:|name="twitter:|name="description")[^>]*>\s*'
+    r"|<title[^>]*>[^<]*</title>\s*"
 )
 
 
