@@ -17,3 +17,6 @@ wheels/
 
 # macOS
 .DS_Store
+
+# Local Claude Code session state (handover notes, launch config)
+.claude/

@@ -116,7 +116,7 @@ class SdkAgent:
             return
         if not reply:
             final = str(result.final_output or "")
-            yield final or "Sorry — I could not produce an answer. Please try again."
+            yield final or "Sorry, I could not produce an answer. Please try again."
 
     @staticmethod
     def _build_tools(dispatcher: ToolDispatcher) -> list[Any]:
@@ -137,7 +137,7 @@ class SdkAgent:
         ) -> dict[str, str]:
             """Notify George that a visitor wants to be contacted.
 
-            Call as soon as the visitor shares their email address — never
+            Call as soon as the visitor shares their email address. Never
             invent or guess an email.
 
             Args:

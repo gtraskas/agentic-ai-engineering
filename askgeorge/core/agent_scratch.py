@@ -93,7 +93,7 @@ class ScratchAgent:
                         slot["arguments"] += call_delta.function.arguments or ""
             if not tool_calls:
                 if not content:
-                    yield "Sorry — I could not produce an answer. Please try again."
+                    yield "Sorry, I could not produce an answer. Please try again."
                 return
             messages.append(self._assistant_tool_message(content, tool_calls))
             for index in sorted(tool_calls):
@@ -108,7 +108,7 @@ class ScratchAgent:
                     }
                 )
         logger.warning("Tool-call rounds exceeded %d; returning fallback.", MAX_TOOL_ROUNDS)
-        yield "Sorry, something went wrong on my side — please try asking again."
+        yield "Sorry, something went wrong on my side. Please try asking again."
 
     @staticmethod
     def _assistant_tool_message(
