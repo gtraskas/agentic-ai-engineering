@@ -449,7 +449,7 @@ class JobFitAnalyzer:
             f"### Worth discussing on a call\n{talking}\n\n"
             "---\n"
             "_Want to talk this role through directly? Share your email in the "
-            "Chat tab, or book a call on the main page._"
+            "Ask me anything tab, or book a call on the main page._"
         )
 
     def _email(self, parsed: ParsedJob, band: str) -> None:

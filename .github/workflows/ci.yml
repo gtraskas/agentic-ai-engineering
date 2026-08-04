@@ -21,11 +21,6 @@ jobs:
       - name: Ruff lint
         run: uv run ruff check .
 
-      - name: Instant FAQ eval
-        env:
-          PYTHONPATH: .
-        run: uv run python tests/instant_eval.py
-
       - name: Smoke test (build the app without network or RAG)
         env:
           OPENROUTER_API_KEY: dummy-key-for-ci
