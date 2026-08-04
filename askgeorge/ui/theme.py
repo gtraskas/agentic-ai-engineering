@@ -334,16 +334,21 @@ footer {
 #ag-chat .bot-row > * {
     padding-left: 16px !important;
 }
-/* Gradio stacks the empty-state placeholder in a COLUMN flexbox, so
-   align-items is the horizontal axis here and justify-content the vertical
-   one; left-aligning it means align-items, not justify-content */
+/* The empty-chat line and the job-fit intro (#ag-jobfit-intro) are the
+   same kind of text in the same slot on their respective tabs, so they
+   share one spec: 16px, 1.6, muted, 58ch measure, sitting at the top of
+   the panel against the column edge. Gradio stacks this placeholder in a
+   COLUMN flexbox, so align-items is the horizontal axis here and
+   justify-content the vertical one. */
 #ag-chat .placeholder-content {
     display: flex !important;
     flex-direction: column !important;
     align-items: flex-start !important;
-    justify-content: center !important;
+    justify-content: flex-start !important;
     height: 100% !important;
-    padding-left: 16px !important;
+    /* matches the 10px 12px Gradio puts on the padded block that holds
+       #ag-jobfit-intro, so the two lines start at the same point */
+    padding: 10px 12px !important;
     text-align: left !important;
 }
 #ag-chat .placeholder-content .placeholder {
@@ -351,9 +356,12 @@ footer {
     justify-content: flex-start !important;
     text-align: left !important;
     margin: 0 !important;
+    max-width: 58ch !important;
 }
 #ag-chat .placeholder-content * {
-    color: var(--ag-subtle) !important;
+    color: var(--ag-muted) !important;
+    font-size: var(--ag-t-body) !important;
+    line-height: 1.6 !important;
 }
 /* Safety net for model-emitted tables: scroll inside the message instead
    of blowing up the narrow chat column */
