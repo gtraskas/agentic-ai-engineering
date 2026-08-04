@@ -133,7 +133,7 @@ footer {
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--ag-subtle);
-    margin: 26px 0 12px 0;
+    margin: 44px 0 14px 0;
 }
 /* ---------- Top bar: wordmark + 2 CVs + links + theme ---------- */
 #ag-topbar {
@@ -334,11 +334,23 @@ footer {
 #ag-chat .bot-row > * {
     padding-left: 16px !important;
 }
+/* Gradio stacks the empty-state placeholder in a COLUMN flexbox, so
+   align-items is the horizontal axis here and justify-content the vertical
+   one; left-aligning it means align-items, not justify-content */
 #ag-chat .placeholder-content {
     display: flex !important;
-    align-items: center !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
     justify-content: center !important;
     height: 100% !important;
+    padding-left: 16px !important;
+    text-align: left !important;
+}
+#ag-chat .placeholder-content .placeholder {
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    margin: 0 !important;
 }
 #ag-chat .placeholder-content * {
     color: var(--ag-subtle) !important;
@@ -408,7 +420,7 @@ footer {
     font-size: 11px;
     color: var(--ag-subtle);
     order: 1;
-    margin: 0 2px;
+    margin: 0 12px 0 4px;
 }
 /* Circular dark submit; hover flips to accent */
 #ag-chat-input button.submit-button {
@@ -429,14 +441,22 @@ footer {
 #ag-chat-input button.submit-button:hover {
     background: var(--ag-accent) !important;
 }
+/* Gradio ships a paper-plane glyph; the design calls for a plain up arrow,
+   drawn as a pseudo-element so no SVG has to be shipped or themed */
 #ag-chat-input button.submit-button svg {
-    width: 15px;
-    height: 15px;
+    display: none !important;
+}
+#ag-chat-input button.submit-button::after {
+    content: "\\2191";
+    font-family: var(--ag-sans);
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1;
 }
 /* ---------- Quiet clear actions ---------- */
 #ag-chat-actions {
     justify-content: flex-end;
-    margin-top: 8px;
+    margin-top: 12px;
 }
 button.ag-clear {
     width: auto;
@@ -457,7 +477,7 @@ button.ag-clear:hover {
 #ag-qcols {
     display: grid !important;
     grid-template-columns: 1fr 1fr;
-    gap: 8px;
+    gap: 10px;
     margin-top: 0;
 }
 button.ag-q {
@@ -591,7 +611,7 @@ button.ag-primary:hover {
     border: 1px solid var(--ag-border) !important;
     border-radius: var(--ag-r-md) !important;
     box-shadow: none !important;
-    margin-top: 34px;
+    margin-top: 52px;
 }
 #ag-book > button {
     background: transparent !important;
@@ -618,7 +638,7 @@ button.ag-primary:hover {
     gap: 1px;
     background: var(--ag-border);
     border: 1px solid var(--ag-border);
-    margin-top: 34px;
+    margin-top: 52px;
 }
 #ag-proof .ag-proof-cell {
     background: var(--ag-canvas);
@@ -653,6 +673,8 @@ button.ag-primary:hover {
     color: var(--ag-accent);
     text-decoration: none;
     font-weight: 600;
+    /* keeps the arrow on the same line as its label */
+    white-space: nowrap;
 }
 /* ---------- Footer ---------- */
 #ag-footer {
@@ -662,8 +684,8 @@ button.ag-primary:hover {
     justify-content: space-between;
     gap: 16px;
     border-top: 1px solid var(--ag-border);
-    margin-top: 40px;
-    padding: 20px 0 10px 0;
+    margin-top: 52px;
+    padding: 24px 0 10px 0;
     text-align: left;
 }
 #ag-footer .ag-foot-line {
@@ -694,10 +716,14 @@ button.ag-primary:hover {
     }
 }
 @media (max-width: 480px) {
+    /* The headline and support line wrap to five or six lines on a phone,
+       and centring leaves the portrait stranded beside their midpoint;
+       aligning to the top pairs it with the first line of the headline */
     #ag-hero {
         grid-template-columns: 56px 1fr;
         gap: 16px;
         padding-top: 28px;
+        align-items: start;
     }
     #ag-hero img.ag-photo {
         width: 56px;
@@ -897,9 +923,8 @@ def _hero_html() -> str:
         {photo_tag}
         <div>
             <h1 class="ag-hl">Talk to me. Or rather, to <em>my AI</em>.</h1>
-            <p class="ag-support">It answers from my own notes on 8 years of
-            AI/ML and data science work. Ask it anything, or paste a job
-            description and get an honest fit report.</p>
+            <p class="ag-support">It answers from my own notes. Ask anything,
+            or paste a job description for an honest fit report.</p>
         </div>
     </div>
     """
