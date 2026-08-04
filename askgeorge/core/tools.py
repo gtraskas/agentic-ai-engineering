@@ -37,7 +37,7 @@ _RECORD_CONTACT_SCHEMA: dict[str, Any] = {
         "name": "record_contact_request",
         "description": (
             "Notify George that a visitor wants to be contacted. Call this as "
-            "soon as the visitor shares their email address — never invent or "
+            "soon as the visitor shares their email address. Never invent or "
             "guess an email."
         ),
         "parameters": {

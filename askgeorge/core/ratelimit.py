@@ -17,7 +17,7 @@ _DAY_SECONDS: int = 86_400
 
 HOURLY_REFUSAL: str = (
     "We've covered quite a lot this hour. Let's pick this up again a bit "
-    "later — or book a call in the calendar below and we'll talk directly."
+    "later, or book a call in the calendar below and we'll talk directly."
 )
 DAILY_REFUSAL: str = (
     "I'm getting a lot of questions today and pausing new answers for now. "

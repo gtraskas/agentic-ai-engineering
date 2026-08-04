@@ -1,10 +1,13 @@
-"""Aegean Twin design: theme, CSS, and the full Gradio layout.
+"""Terracotta design: theme, CSS, and the full Gradio layout.
 
-Hero-centric portfolio chat in two moods: a bright off-white canvas and a
-deep-navy night mode, both accented Aegean sky. One typeface (Inter);
-hierarchy comes from weight, size, and letter-spacing. The visitor's OS
-preference picks the initial theme; a top-bar toggle overrides it and is
-remembered in localStorage.
+A warm off-white canvas and a deep-brown night mode, both accented
+terracotta. Three typefaces with one job each: Newsreader for the headline
+and the proof-card titles, Public Sans for everything else, IBM Plex Mono
+for the all-caps eyebrows. Six type sizes, no more. Borders carry the
+structure; there is effectively one shadow on the page.
+
+The visitor's OS preference picks the initial theme; a top-bar toggle
+overrides it and is remembered in localStorage.
 """
 
 from __future__ import annotations
@@ -20,672 +23,762 @@ from typing import Any
 import gradio as gr
 
 from askgeorge.core.config import ASSETS_DIR, PUBLIC_BASE_URL, booking_url
-from askgeorge.core.instant import InstantFAQ
 from askgeorge.core.ratelimit import RateLimiter
 
 logger = logging.getLogger(__name__)
 
 CHAT_HEIGHT: int = 460
-CALENDAR_HEIGHT: int = 620
 
 REPO_URL: str = "https://github.com/gtraskas/agentic-ai-engineering"
-
-PROJECT_LINKS: list[tuple[str, str]] = [
-    ("MolekitChen", "https://apps.apple.com/us/app/molekitchen/id6773031788"),
-    ("Wine-VFM", "https://gtraskas--wine-vfm-app-web.modal.run"),
-    ("AskGeorge · code", REPO_URL),
-]
+MOLEKITCHEN_URL: str = "https://apps.apple.com/us/app/molekitchen/id6773031788"
+LINKEDIN_URL: str = "https://www.linkedin.com/in/george-traskas/"
+GITHUB_URL: str = "https://github.com/gtraskas"
+EMAIL_ADDRESS: str = "georgiost77@gmail.com"
 
 CV_FILES: list[tuple[str, str]] = [
     ("AI/ML CV", "Georgios_Traskas_AI_ML_Engineer.pdf"),
     ("Data CV", "Georgios_Traskas_Data_Scientist.pdf"),
 ]
 
-# Left column: instant-FAQ questions, each a canonical InstantFAQ trigger.
-FAQ_PILLS: list[str] = [
+# The six suggestions under the composer. Every one goes through the live
+# RAG + LLM path, so every one is asserted to be in the retrieval golden
+# set (tests/retrieval_eval.py) — retrieval for them is known-good.
+PROMPT_PILLS: list[str] = [
     "What do you do?",
     "Tell me about your most recent project.",
-    "What do your clients say about working with you?",
+    "How did you reduce alert noise at Predictive Fitness?",
+    "What went wrong with tool selection in the MCP server?",
     "What is your notice period?",
     "Can I talk to the real George?",
 ]
 
-# Right column: questions that showcase the live RAG + LLM pipeline. Each
-# appears in the retrieval golden set (tests/retrieval_eval.py), so
-# retrieval is known-good.
-LIVE_AI_QUESTIONS: list[str] = [
-    "How did you reduce alert noise at Predictive Fitness?",
-    "Do you know Kubernetes?",
-    "How does the job-fit analysis work?",
-    "What went wrong with tool selection in the MCP server?",
-    "How does your causal inference work help marketing teams?",
-]
-
 CHAT_PLACEHOLDER: str = "Ask about my experience and projects. I answer as George."
+COMPOSER_PLACEHOLDER: str = "Ask anything"
 
-AEGEAN_CSS: str = f"""
-/* ---------- Palette: light by default, .dark overrides ---------- */
-:root {{
-    --ag-canvas: #FAFAF8;
+TERRACOTTA_CSS: str = """
+/* ---------- Tokens ---------- */
+:root {
+    --ag-canvas:  #FBF9F5;
     --ag-surface: #FFFFFF;
-    --ag-ink: #0F172A;
-    --ag-body: #334155;
-    --ag-muted: #64748B;
-    --ag-subtle: #94A3B8;
-    --ag-border: #E2E8F0;
-    --ag-accent: #0EA5E9;
-    --ag-accent-strong: #0284C7;
-    --ag-accent-soft: rgba(14, 165, 233, 0.14);
-    --ag-shadow: rgba(15, 23, 42, 0.06);
-}}
-.dark {{
-    --ag-canvas: #0B1220;
-    --ag-surface: #121B2E;
-    --ag-ink: #E6EBF4;
-    --ag-body: #C3CCDB;
-    --ag-muted: #8B98AC;
-    --ag-subtle: #5F7091;
-    --ag-border: #223047;
-    --ag-accent: #38BDF8;
-    --ag-accent-strong: #7DD3FC;
-    --ag-accent-soft: rgba(56, 189, 248, 0.16);
-    --ag-shadow: rgba(0, 0, 0, 0.35);
-}}
+    --ag-ink:     #181614;
+    --ag-body:    #4A443D;
+    --ag-muted:   #6E665D;
+    --ag-subtle:  #A09789;
+    --ag-border:  #E6E0D6;
+    --ag-line:    #F0EBE2;
+    --ag-accent:  #B4501E;
+    --ag-shadow:  rgba(24, 22, 20, 0.05);
+
+    --ag-serif: Newsreader, Georgia, 'Times New Roman', serif;
+    --ag-sans:  'Public Sans', Helvetica, Arial, sans-serif;
+    --ag-mono:  'IBM Plex Mono', ui-monospace, monospace;
+
+    /* Type scale — do not introduce sizes outside this set */
+    --ag-t-micro: 10px;   /* mono eyebrows, all-caps labels */
+    --ag-t-small: 13px;   /* quiet actions */
+    --ag-t-ui:    14px;   /* nav, buttons, prompt pills */
+    --ag-t-body:  16px;   /* chat, paragraphs, input */
+    --ag-t-lead:  19px;   /* proof-card titles */
+    --ag-t-h1:    33px;   /* hero */
+
+    --ag-r-sm: 4px;
+    --ag-r-md: 6px;
+    --ag-r-pill: 999px;
+}
+.dark {
+    --ag-canvas:  #17140F;
+    --ag-surface: #201C16;
+    --ag-ink:     #F3EEE5;
+    --ag-body:    #C9C0B2;
+    --ag-muted:   #A0968A;
+    --ag-subtle:  #7A7168;
+    --ag-border:  #302A22;
+    --ag-line:    #262019;
+    --ag-accent:  #E0793C;
+    --ag-shadow:  rgba(0, 0, 0, 0.4);
+}
+/* ---------- Shell ---------- */
 /* The two tabs differ in height; without a reserved gutter the vertical
    scrollbar pops in and out on tab switch and shifts the whole layout */
-html {{
+html {
     scrollbar-gutter: stable;
-}}
-body, .gradio-container {{
+}
+body, .gradio-container {
     background: var(--ag-canvas) !important;
     color: var(--ag-body);
-}}
+    font-family: var(--ag-sans) !important;
+}
 /* gradio-app is a flex container, so without an explicit width the page
    column sizes to each tab's intrinsic content width and jumps on tab
    switch; width: 100% pins it to max-width on every tab */
-.gradio-container {{
+.gradio-container {
     max-width: 820px !important;
     width: 100% !important;
     margin: 0 auto !important;
-}}
+}
 /* Hide Gradio's own footer chrome */
-footer {{
+footer {
     display: none !important;
-}}
-.ag-label {{
-    font-size: 0.68rem;
-    font-weight: 600;
+}
+/* Gradio pads every anchor 2px 8px, which opens a visible gap before the
+   punctuation that follows a link ("Email me ." instead of "Email me.") */
+#ag-topbar a, #ag-proof a, #ag-footer a {
+    padding: 0 !important;
+}
+/* Shared all-caps mono label */
+.ag-label {
+    font-family: var(--ag-mono);
+    font-size: var(--ag-t-micro);
+    font-weight: 500;
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--ag-subtle);
-    margin: 0 0 10px 0;
-}}
-/* ---------- Top bar ---------- */
-#ag-topbar {{
+    margin: 44px 0 14px 0;
+}
+/* ---------- Top bar: wordmark + 2 CVs + links + theme ---------- */
+#ag-topbar {
     display: flex;
-    flex-wrap: nowrap !important;
+    flex-wrap: wrap !important;
     align-items: center;
-    gap: 10px;
-    padding: 4px 2px 0 2px;
-}}
-#ag-topbar > * {{
+    gap: 8px;
+    padding: 26px 2px 0 2px;
+}
+#ag-topbar > * {
     flex: 0 0 auto !important;
     width: auto !important;
     min-width: 0 !important;
-}}
-#ag-topbar .ag-grow {{
+}
+/* The wordmark takes the slack so everything else groups to the right */
+#ag-topbar .ag-grow {
     flex: 1 1 auto !important;
     overflow: hidden;
-}}
-#ag-topbar .ag-topbar-right {{
-    text-align: right;
-    white-space: nowrap;
-}}
-/* Gradio wraps input components in a .form block with its own chrome */
-#ag-topbar .form {{
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    flex: 0 0 auto !important;
-    width: 140px !important;
-    min-width: 0 !important;
-}}
-#ag-topbar #ag-name-input {{
-    width: 140px !important;
-    padding: 0 !important;
-}}
-#ag-topbar .ag-wordmark {{
-    font-size: 1.05rem;
-    font-weight: 700;
+}
+#ag-topbar .ag-wordmark {
+    font-family: var(--ag-serif);
+    font-size: 20px;
+    font-weight: 500;
     letter-spacing: -0.01em;
     color: var(--ag-ink);
     margin: 0;
     white-space: nowrap;
-}}
-#ag-topbar .ag-tagline {{
-    font-size: 0.62rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    color: var(--ag-subtle);
-    margin: 2px 0 0 0;
+}
+#ag-topbar .ag-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}}
-#ag-hero .ag-status {{
-    font-size: 0.68rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: #10B981;
-    margin: 18px 0 0 0;
-}}
-#ag-topbar a.ag-link {{
-    font-size: 0.78rem;
-    font-weight: 600;
+}
+#ag-topbar a.ag-link {
+    font-size: var(--ag-t-ui);
+    font-weight: 500;
     color: var(--ag-muted);
     text-decoration: none;
-    margin-left: 6px;
-    white-space: nowrap;
-}}
-#ag-topbar a.ag-link:hover {{
+}
+#ag-topbar a.ag-link:hover {
     color: var(--ag-accent);
-}}
-#ag-topbar button.ag-cv {{
+}
+/* The two CV downloads — the ONLY place CVs appear */
+#ag-topbar button.ag-cv {
     width: auto;
     flex: 0 0 auto;
-    font-size: 0.76rem !important;
-    font-weight: 600 !important;
+    font-family: var(--ag-sans) !important;
+    font-size: var(--ag-t-ui) !important;
+    font-weight: 500 !important;
     color: var(--ag-muted) !important;
     background: transparent !important;
     border: 1px solid var(--ag-border) !important;
-    border-radius: 999px !important;
-    padding: 3px 10px !important;
+    border-radius: var(--ag-r-pill) !important;
+    padding: 5px 13px !important;
     box-shadow: none !important;
-}}
-#ag-topbar button.ag-cv:hover {{
+}
+#ag-topbar button.ag-cv:hover {
     color: var(--ag-accent) !important;
     border-color: var(--ag-accent) !important;
-}}
-#ag-theme-btn {{
+}
+#ag-topbar .ag-divider {
+    width: 1px;
+    height: 16px;
+    background: var(--ag-border);
+}
+#ag-theme-btn {
     cursor: pointer;
-    font-size: 0.95rem;
+    font-size: 13px;
     line-height: 1;
     color: var(--ag-muted);
     background: transparent;
     border: 1px solid var(--ag-border);
-    border-radius: 999px;
-    padding: 6px 10px;
-    margin-left: 12px;
+    border-radius: var(--ag-r-pill);
+    padding: 6px 9px;
     transition: color 0.15s ease, border-color 0.15s ease;
-}}
-#ag-theme-btn:hover {{
+}
+#ag-theme-btn:hover {
     color: var(--ag-accent);
     border-color: var(--ag-accent);
-}}
-/* ---------- Hero ---------- */
-#ag-hero {{
-    text-align: center;
-    padding: 30px 0 6px 0;
-}}
-#ag-hero img.ag-photo {{
-    display: block;
-    margin: 0 auto;
-    width: 96px;
-    height: 96px;
+}
+/* ---------- Hero: compact, photo beside the line ---------- */
+#ag-hero {
+    display: grid;
+    grid-template-columns: 64px 1fr;
+    gap: 20px;
+    align-items: center;
+    padding: 40px 0 0 0;
+    text-align: left;
+}
+#ag-hero img.ag-photo {
+    width: 64px;
+    height: 64px;
     border-radius: 50%;
     object-fit: cover;
-    border: 3px solid var(--ag-canvas);
-    outline: 2px solid var(--ag-accent);
-    outline-offset: 3px;
-    box-shadow: 0 0 34px var(--ag-accent-soft);
-}}
-#ag-hero h1.ag-hl {{
-    font-size: clamp(1.9rem, 5vw, 2.7rem);
-    font-weight: 750;
-    letter-spacing: -0.03em;
-    line-height: 1.14;
-    color: var(--ag-ink);
-    margin: 10px 0 14px 0;
-}}
-#ag-hero h1.ag-hl em {{
-    font-style: normal;
-    color: var(--ag-accent);
-}}
-#ag-hero .ag-support {{
-    font-size: 0.98rem;
-    color: var(--ag-muted);
-    max-width: 34rem;
-    margin: 0 auto;
-    line-height: 1.55;
-}}
-/* ---------- Onboarding tour: anchored cards, remembered in the browser ---------- */
-#ag-hint {{
-    display: none; /* agInitHint shows it unless previously dismissed */
-    position: absolute;
-    z-index: 60;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    width: 300px;
-    padding: 14px 16px 12px 16px;
-    background: var(--ag-surface);
     border: 1px solid var(--ag-border);
-    border-radius: 14px;
-    box-shadow: 0 6px 24px var(--ag-shadow);
-    text-align: left;
-}}
-#ag-hint::before {{
-    content: "";
-    position: absolute;
-    top: -7px;
-    left: var(--caret-x, 24px);
-    width: 12px;
-    height: 12px;
-    background: var(--ag-surface);
-    border-left: 1px solid var(--ag-border);
-    border-top: 1px solid var(--ag-border);
-    transform: rotate(45deg);
-}}
-#ag-hint .ag-hint-eyebrow {{
-    font-size: 0.64rem;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--ag-accent);
-    margin: 0;
-}}
-#ag-hint .ag-hint-text {{
-    font-size: 0.84rem;
-    line-height: 1.5;
-    color: var(--ag-body);
-    margin: 0;
-}}
-#ag-hint b {{
+    box-shadow: none;
+    outline: none;
+}
+#ag-hero h1.ag-hl {
+    font-family: var(--ag-serif);
+    font-size: clamp(26px, 4.2vw, var(--ag-t-h1));
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.12;
     color: var(--ag-ink);
-}}
-#ag-hint .ag-hint-actions {{
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 10px;
-    width: 100%;
-}}
-#ag-hint .ag-hint-btn {{
-    cursor: pointer;
-    background: var(--ag-accent);
-    color: #FFFFFF;
-    border: none;
-    border-radius: 999px;
-    font-size: 0.78rem;
-    font-weight: 600;
-    padding: 6px 16px;
-    transition: filter 0.15s ease;
-}}
-#ag-hint .ag-hint-btn:hover {{
-    filter: brightness(1.08);
-}}
-#ag-hint .ag-hint-skip {{
-    cursor: pointer;
-    background: transparent;
-    border: none;
-    color: var(--ag-subtle);
-    font-size: 0.78rem;
-    font-weight: 500;
-    padding: 6px 4px;
-}}
-#ag-hint .ag-hint-skip:hover {{
+    margin: 0 0 8px 0;
+    text-wrap: pretty;
+}
+#ag-hero h1.ag-hl em {
+    font-style: italic;
     color: var(--ag-accent);
-}}
-/* ---------- Tabs: minimal centered switch ----------
+}
+#ag-hero .ag-support {
+    font-size: var(--ag-t-body);
+    line-height: 1.55;
+    color: var(--ag-muted);
+    max-width: 54ch;
+    margin: 0;
+    text-wrap: pretty;
+}
+/* ---------- Tabs ----------
    No width override: Gradio 6 measures the tablist for its overflow
    menu, and a fit-content width collapses the tabs into a "..." menu. */
-.gradio-container [role="tablist"] {{
-    justify-content: center;
-    margin: 18px auto 6px auto;
+.gradio-container [role="tablist"] {
+    justify-content: flex-start;
+    gap: 28px;
+    margin: 34px 0 0 0;
     background: transparent;
     border: none !important;
-    gap: 26px;
-}}
-.gradio-container button[role="tab"] {{
+    border-bottom: 1px solid var(--ag-border) !important;
+}
+.gradio-container button[role="tab"] {
     border: none !important;
-    padding: 8px 2px !important;
-    font-size: 0.92rem !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    font-family: var(--ag-sans) !important;
+    font-size: var(--ag-t-body) !important;
     font-weight: 600 !important;
     color: var(--ag-subtle) !important;
-    background: transparent !important;
-    border-radius: 0 !important;
-}}
-.gradio-container button[role="tab"]:hover {{
+    padding: 0 0 12px 0 !important;
+    margin-bottom: -1px !important;
+}
+.gradio-container button[role="tab"]::after {
+    display: none !important;
+}
+.gradio-container button[role="tab"]:hover {
     color: var(--ag-ink) !important;
-}}
-.gradio-container button[role="tab"]::after {{
-    display: none !important;
-}}
-.gradio-container button[role="tab"][aria-selected="true"] {{
-    color: var(--ag-accent) !important;
+}
+.gradio-container button[role="tab"][aria-selected="true"] {
+    color: var(--ag-ink) !important;
     box-shadow: inset 0 -2px 0 var(--ag-accent) !important;
-}}
-/* ---------- Chat: open surface, no card ---------- */
-#ag-chat .label-wrap, #ag-chat label {{
+}
+/* ---------- Chat: open surface, no bubbles ---------- */
+#ag-chat, #ag-chat .label-wrap, #ag-chat label {
+    border: none !important;
+}
+#ag-chat .label-wrap, #ag-chat label {
     display: none !important;
-}}
-#ag-chat {{
+}
+#ag-chat {
     background: transparent !important;
-    border: none !important;
     box-shadow: none !important;
-}}
-#ag-chat .message-row.panel {{
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    margin: 0 !important;
-    padding: 9px 4px !important;
-}}
+    min-height: 240px;
+}
+#ag-chat .message-row.panel,
 #ag-chat .message-row.panel .flex-wrap,
 #ag-chat .message-row.panel .role,
-#ag-chat .message-row .message {{
+#ag-chat .message-row .message {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-}}
-#ag-chat .message-row, #ag-chat .message-row * {{
+}
+#ag-chat .message-row.panel {
+    margin: 0 !important;
+    padding: 11px 0 !important;
+}
+#ag-chat .message-row, #ag-chat .message-row * {
     color: var(--ag-body);
-}}
-/* Same side, same box for both roles; a slim accent bar marks the visitor */
-#ag-chat .user-row {{
+    font-size: var(--ag-t-body);
+    line-height: 1.65;
+}
+/* Both roles left-aligned; a slim accent rule marks the visitor.
+   The selector carries every class Gradio puts on the row: the blanket
+   "border: none" above is more specific than a plain .user-row rule and
+   would otherwise erase the accent rule even with !important */
+#ag-chat .user-row {
     justify-content: flex-start !important;
-}}
-#ag-chat .user-row > * {{
-    border-left: 3px solid var(--ag-accent) !important;
-    padding-left: 12px !important;
-}}
-#ag-chat .user-row * {{
+}
+#ag-chat .message-row.panel.user-row > .flex-wrap {
+    border-left: 2px solid var(--ag-accent) !important;
+    padding-left: 14px !important;
+}
+#ag-chat .user-row * {
     color: var(--ag-ink) !important;
     font-weight: 600;
-}}
-#ag-chat .placeholder-content {{
+}
+#ag-chat .bot-row > * {
+    padding-left: 16px !important;
+}
+/* The empty-chat line and the job-fit intro (#ag-jobfit-intro) are the
+   same kind of text in the same slot on their respective tabs, so they
+   share one spec: 16px, 1.6, muted, 58ch measure, sitting at the top of
+   the panel against the column edge. Gradio stacks this placeholder in a
+   COLUMN flexbox, so align-items is the horizontal axis here and
+   justify-content the vertical one. */
+#ag-chat .placeholder-content {
     display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
     height: 100% !important;
-}}
-#ag-chat .placeholder-content * {{
-    color: var(--ag-subtle) !important;
-}}
-/* Safety net for model-emitted tables: scroll inside the bubble instead
+    /* matches the 10px 12px Gradio puts on the padded block that holds
+       #ag-jobfit-intro, so the two lines start at the same point */
+    padding: 10px 12px !important;
+    text-align: left !important;
+}
+#ag-chat .placeholder-content .placeholder {
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    text-align: left !important;
+    margin: 0 !important;
+    max-width: 58ch !important;
+}
+#ag-chat .placeholder-content * {
+    color: var(--ag-muted) !important;
+    font-size: var(--ag-t-body) !important;
+    line-height: 1.6 !important;
+}
+/* Safety net for model-emitted tables: scroll inside the message instead
    of blowing up the narrow chat column */
-#ag-chat .message table {{
+#ag-chat .message table {
     display: block;
     max-width: 100%;
     overflow-x: auto;
-    font-size: 0.78rem;
+    font-size: var(--ag-t-ui);
     border-collapse: collapse;
-}}
-#ag-chat .message th, #ag-chat .message td {{
+}
+#ag-chat .message th, #ag-chat .message td {
     border: 1px solid var(--ag-border);
-    padding: 4px 8px;
+    padding: 6px 10px;
     white-space: nowrap;
-}}
-/* ---------- Input ---------- */
-#ag-chat-input {{
+}
+/* ---------- Composer: pill + circular arrow ---------- */
+/* Gradio wraps every input in a .form block carrying its own fill and
+   padding; the composer and the job-fit textarea draw their own borders,
+   so the wrapper has to disappear or it reads as a slab behind them */
+.form:has(> #ag-chat-input), .form:has(> #ag-jobfit-box) {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-}}
-#ag-chat-input .input-container {{
+}
+#ag-chat-input, #ag-jobfit-box {
+    padding: 0 !important;
+}
+#ag-chat-input {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+#ag-chat-input .input-container {
     background: var(--ag-surface) !important;
     border: 1px solid var(--ag-border) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 2px 10px var(--ag-shadow) !important;
-}}
-#ag-chat-input textarea {{
-    background: transparent !important;
-    color: var(--ag-ink) !important;
-    padding: 13px 16px !important;
-}}
-#ag-chat-input textarea::placeholder {{
-    color: var(--ag-subtle) !important;
-}}
-/* Compact visitor-name field in the top bar, styled like the CV pills */
-#ag-name-input {{
+    border-radius: var(--ag-r-pill) !important;
+    box-shadow: 0 1px 2px var(--ag-shadow) !important;
+    padding: 8px 8px 8px 20px !important;
+    align-items: center !important;
+}
+#ag-chat-input .input-container:focus-within {
+    border-color: var(--ag-accent) !important;
+}
+#ag-chat-input textarea {
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-}}
-#ag-name-input .input-container {{
-    background: transparent !important;
-    border: 1px solid var(--ag-border) !important;
-    border-radius: 999px !important;
-    box-shadow: none !important;
-}}
-#ag-name-input input, #ag-name-input textarea {{
-    background: transparent !important;
     color: var(--ag-ink) !important;
-    font-size: 0.78rem !important;
-    padding: 5px 14px !important;
-}}
-#ag-name-input input::placeholder, #ag-name-input textarea::placeholder {{
+    font-family: var(--ag-sans) !important;
+    font-size: var(--ag-t-body) !important;
+    line-height: 1.6 !important;
+    padding: 4px 0 !important;
+    order: 0;
+}
+#ag-chat-input textarea::placeholder {
     color: var(--ag-subtle) !important;
-}}
-#ag-chat-input button.submit-button {{
+}
+/* The keyboard hint is a pseudo-element so it can sit inside Gradio's own
+   input container without a wrapper component; flex order puts it left of
+   the submit button */
+#ag-chat-input .input-container::after {
+    content: "\\21B5";
+    font-family: var(--ag-mono);
+    font-size: 11px;
+    color: var(--ag-subtle);
+    order: 1;
+    margin: 0 12px 0 4px;
+}
+/* Circular dark submit; hover flips to accent */
+#ag-chat-input button.submit-button {
+    order: 2;
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    border-radius: 50% !important;
+    background: var(--ag-ink) !important;
+    color: var(--ag-canvas) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+#ag-chat-input button.submit-button:hover {
     background: var(--ag-accent) !important;
-    color: #FFFFFF !important;
-    border-radius: 12px !important;
-    margin: 6px !important;
-}}
-/* ---------- Chat actions: quiet clear button under the input ---------- */
-#ag-chat-actions {{
+}
+/* Gradio ships a paper-plane glyph; the design calls for a plain up arrow,
+   drawn as a pseudo-element so no SVG has to be shipped or themed */
+#ag-chat-input button.submit-button svg {
+    display: none !important;
+}
+#ag-chat-input button.submit-button::after {
+    content: "\\2191";
+    font-family: var(--ag-sans);
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1;
+}
+/* ---------- Quiet clear actions ---------- */
+#ag-chat-actions {
     justify-content: flex-end;
-    margin-top: 2px;
-}}
-#ag-chat-actions button.ag-clear {{
+    margin-top: 12px;
+}
+button.ag-clear {
     width: auto;
     flex: 0 0 auto !important;
     background: transparent !important;
     border: none !important;
     box-shadow: none !important;
-    color: var(--ag-subtle) !important;
-    font-size: 0.75rem !important;
+    font-family: var(--ag-sans) !important;
+    font-size: var(--ag-t-small) !important;
     font-weight: 500 !important;
-    padding: 2px 6px !important;
-}}
-#ag-chat-actions button.ag-clear:hover {{
+    color: var(--ag-subtle) !important;
+    padding: 2px 4px !important;
+}
+button.ag-clear:hover {
     color: var(--ag-accent) !important;
-}}
-/* ---------- Question pills: two columns, FAQ left, live AI right ---------- */
-#ag-qcols {{
-    margin-top: 10px;
-    gap: 22px;
-    align-items: flex-start;
-}}
-#ag-qcols .ag-label {{
-    margin: 2px 0 4px 2px;
-}}
-#ag-qcols .ag-qcol {{
-    gap: 6px !important;
-}}
-button.ag-q {{
+}
+/* ---------- Prompt pills: one unlabelled set, 2 x 3 ---------- */
+#ag-qcols {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 0;
+}
+button.ag-q {
     width: 100%;
     text-align: left;
     justify-content: flex-start !important;
-    font-size: 0.8rem !important;
+    font-family: var(--ag-sans) !important;
+    font-size: var(--ag-t-ui) !important;
     font-weight: 500 !important;
+    line-height: 1.4 !important;
     color: var(--ag-muted) !important;
     background: transparent !important;
     border: 1px solid var(--ag-border) !important;
-    border-radius: 10px !important;
-    padding: 7px 13px !important;
+    border-radius: var(--ag-r-md) !important;
+    padding: 9px 13px !important;
     box-shadow: none !important;
     transition: border-color 0.15s ease, color 0.15s ease;
-}}
-button.ag-q:hover {{
+}
+button.ag-q:hover {
     border-color: var(--ag-accent) !important;
     color: var(--ag-accent) !important;
-}}
+}
 /* ---------- Job-fit tab ---------- */
-#ag-jobfit-box textarea {{
-    height: {CHAT_HEIGHT}px !important;
+#ag-jobfit-intro {
+    font-size: var(--ag-t-body);
+    line-height: 1.6;
+    color: var(--ag-muted);
+    max-width: 58ch;
+    margin: 0 0 16px 0;
+}
+#ag-jobfit-box textarea {
+    height: 260px !important;
     background: var(--ag-surface) !important;
     color: var(--ag-ink) !important;
     border: 1px solid var(--ag-border) !important;
-    border-radius: 16px !important;
-}}
-#ag-jobfit-box label span {{
-    color: var(--ag-subtle) !important;
-}}
-/* Hide the report card until it holds actual content */
-#ag-jobfit-report:not(:has(p, table, h1, h2, h3, ul, ol)) {{
-    display: none;
-}}
-#ag-jobfit-report.generating,
-#ag-jobfit-report .generating {{
+    border-radius: var(--ag-r-md) !important;
+    font-family: var(--ag-sans) !important;
+    font-size: 15px !important;
+    line-height: 1.6 !important;
+    padding: 16px !important;
+}
+#ag-jobfit-box textarea:focus {
     border-color: var(--ag-accent) !important;
-    animation: ag-pulse 1.6s ease-in-out infinite;
-}}
-@keyframes ag-pulse {{
-    0%, 100% {{ box-shadow: 0 0 0 0 var(--ag-accent-soft); }}
-    50% {{ box-shadow: 0 0 0 7px transparent; }}
-}}
-#ag-jobfit-report {{
+}
+#ag-jobfit-box label span {
+    color: var(--ag-subtle) !important;
+}
+#ag-jobfit-actions {
+    align-items: center;
+    gap: 16px;
+    margin-top: 14px;
+}
+button.ag-primary {
+    width: auto;
+    flex: 0 0 auto !important;
+    background: var(--ag-ink) !important;
+    color: var(--ag-canvas) !important;
+    border: none !important;
+    border-radius: var(--ag-r-sm) !important;
+    font-family: var(--ag-sans) !important;
+    font-size: var(--ag-t-ui) !important;
+    font-weight: 600 !important;
+    padding: 10px 18px !important;
+    box-shadow: none !important;
+}
+button.ag-primary:hover {
+    background: var(--ag-accent) !important;
+}
+/* Hide the report card until it holds actual content */
+#ag-jobfit-report:not(:has(p, table, h1, h2, h3, ul, ol)) {
+    display: none;
+}
+#ag-jobfit-report {
     background: var(--ag-surface);
     border: 1px solid var(--ag-border);
-    border-radius: 16px;
-    padding: 6px 22px;
-    box-shadow: 0 1px 3px var(--ag-shadow);
+    border-radius: var(--ag-r-md);
+    padding: 4px 22px 18px 22px;
+    box-shadow: none;
     color: var(--ag-body);
-}}
-#ag-jobfit-report table {{
+    margin-top: 24px;
+}
+#ag-jobfit-report.generating, #ag-jobfit-report .generating {
+    border-color: var(--ag-accent) !important;
+}
+#ag-jobfit-report table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.86rem;
-}}
-#ag-jobfit-report th, #ag-jobfit-report td {{
-    border-bottom: 1px solid var(--ag-border);
-    padding: 6px 10px;
+    font-size: 15px;
+}
+#ag-jobfit-report th {
+    font-family: var(--ag-mono);
+    font-size: var(--ag-t-micro);
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ag-subtle);
     text-align: left;
-}}
+    padding: 14px 10px 10px 10px;
+    border-bottom: 1px solid var(--ag-border);
+}
+#ag-jobfit-report td {
+    padding: 11px 10px;
+    border-bottom: 1px solid var(--ag-line);
+    line-height: 1.45;
+    text-align: left;
+}
+#ag-jobfit-report th:first-child, #ag-jobfit-report td:first-child {
+    padding-left: 0;
+}
+#ag-jobfit-report th:last-child, #ag-jobfit-report td:last-child {
+    padding-right: 0;
+}
+#ag-jobfit-report td:nth-child(2) {
+    color: var(--ag-subtle);
+    font-size: var(--ag-t-ui);
+}
+#ag-jobfit-report td:nth-child(3) {
+    font-weight: 600;
+    color: var(--ag-ink);
+}
 /* Type and My fit columns shrink to their content on one line;
    the Requirement column takes all remaining width */
 #ag-jobfit-report th:nth-child(2), #ag-jobfit-report td:nth-child(2),
-#ag-jobfit-report th:nth-child(3), #ag-jobfit-report td:nth-child(3) {{
+#ag-jobfit-report th:nth-child(3), #ag-jobfit-report td:nth-child(3) {
     white-space: nowrap;
     width: 1%;
-}}
+}
 /* ---------- Booking accordion ---------- */
-#ag-book {{
+#ag-book {
     background: transparent !important;
     border: 1px solid var(--ag-border) !important;
-    border-radius: 16px !important;
+    border-radius: var(--ag-r-md) !important;
     box-shadow: none !important;
-    margin-top: 18px;
-}}
-#ag-book > button {{
+    margin-top: 52px;
+}
+#ag-book > button {
     background: transparent !important;
-    color: var(--ag-muted) !important;
+    font-family: var(--ag-sans) !important;
+    font-size: 15px !important;
     font-weight: 600 !important;
-}}
-#ag-book iframe {{
+    color: var(--ag-body) !important;
+    padding: 15px 18px !important;
+}
+#ag-book > button:hover {
+    color: var(--ag-accent) !important;
+}
+#ag-book iframe {
     width: 100%;
-    height: {CALENDAR_HEIGHT}px;
+    height: 620px;
     border: 0;
-    border-radius: 10px;
+    border-radius: var(--ag-r-sm);
     background: #FFFFFF; /* Google's booking page is light-only */
-}}
-/* ---------- Footer ---------- */
-#ag-footer {{
-    text-align: center;
-    padding: 26px 0 10px 0;
-}}
-#ag-footer .ag-foot-line {{
-    font-size: 0.82rem;
+}
+/* ---------- Proof strip: 3 cells, hairline grid ---------- */
+#ag-proof {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1px;
+    background: var(--ag-border);
+    border: 1px solid var(--ag-border);
+    margin-top: 52px;
+}
+#ag-proof .ag-proof-cell {
+    background: var(--ag-canvas);
+    padding: 20px 22px;
+}
+#ag-proof .ag-proof-eyebrow {
+    font-family: var(--ag-mono);
+    font-size: var(--ag-t-micro);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ag-subtle);
+    margin: 0 0 10px 0;
+}
+#ag-proof .ag-proof-title {
+    font-family: var(--ag-serif);
+    font-size: var(--ag-t-lead);
+    line-height: 1.25;
+    color: var(--ag-ink);
+    margin: 0 0 6px 0;
+}
+#ag-proof .ag-proof-body {
+    font-size: var(--ag-t-ui);
+    line-height: 1.5;
     color: var(--ag-muted);
-    margin-bottom: 8px;
-}}
-#ag-footer a {{
+    margin: 0;
+}
+#ag-proof .ag-proof-body strong {
+    color: var(--ag-ink);
+    font-weight: 600;
+}
+#ag-proof a {
     color: var(--ag-accent);
     text-decoration: none;
     font-weight: 600;
-}}
-#ag-footer .ag-foot-links a {{
-    font-size: 0.8rem;
+    /* keeps the arrow on the same line as its label */
+    white-space: nowrap;
+}
+/* ---------- Footer ---------- */
+#ag-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    border-top: 1px solid var(--ag-border);
+    margin-top: 52px;
+    padding: 24px 0 10px 0;
+    text-align: left;
+}
+#ag-footer .ag-foot-line {
+    font-size: var(--ag-t-ui);
     color: var(--ag-subtle);
-    font-weight: 500;
-    margin: 0 8px;
-}}
-#ag-footer .ag-foot-links a:hover {{
+    margin: 0;
+}
+#ag-footer a {
     color: var(--ag-accent);
-}}
-/* ---------- Responsive: tablet and below ---------- */
-@media (max-width: 768px) {{
-    #ag-topbar {{
-        flex-wrap: wrap !important;
-        row-gap: 8px;
-    }}
-    #ag-qcols {{
-        flex-direction: column !important;
-        gap: 14px;
-    }}
-    #ag-hero {{
-        padding: 22px 0 4px 0;
-    }}
-}}
-/* ---------- Responsive: phones ---------- */
-@media (max-width: 480px) {{
-    #ag-topbar .ag-tagline {{
-        display: none;
-    }}
+    text-decoration: none;
+    font-weight: 600;
+}
+#ag-footer .ag-disclosure {
+    font-family: var(--ag-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--ag-subtle);
+    margin: 0;
+    text-transform: uppercase;
+}
+/* ---------- Responsive ---------- */
+@media (max-width: 768px) {
+    #ag-proof {
+        grid-template-columns: 1fr;
+    }
+    #ag-qcols {
+        grid-template-columns: 1fr !important;
+    }
+}
+@media (max-width: 480px) {
+    /* The headline and support line wrap to five or six lines on a phone,
+       and centring leaves the portrait stranded beside their midpoint;
+       aligning to the top pairs it with the first line of the headline */
+    #ag-hero {
+        grid-template-columns: 56px 1fr;
+        gap: 16px;
+        padding-top: 28px;
+        align-items: start;
+    }
+    #ag-hero img.ag-photo {
+        width: 56px;
+        height: 56px;
+    }
     /* The wordmark takes its own row, so the CV pills group together */
-    #ag-topbar .ag-grow {{
+    #ag-topbar .ag-grow {
         flex: 1 1 100% !important;
-    }}
-    /* The name field takes a full row of its own at the bottom of the bar */
-    #ag-topbar .form {{
-        flex: 1 1 100% !important;
-        width: 100% !important;
-        order: 10;
-    }}
-    /* flex-grow beats the inline flex-grow: 0 Gradio puts on the block */
-    #ag-topbar #ag-name-input {{
-        width: 100% !important;
-        flex-grow: 1 !important;
-    }}
-    #ag-topbar .ag-topbar-right {{
+    }
+    #ag-topbar .ag-topbar-right {
+        flex-wrap: wrap;
         white-space: normal;
-    }}
-    #ag-theme-btn {{
-        margin-left: 4px;
-    }}
-    #ag-jobfit-report {{
-        padding: 6px 14px;
-    }}
-}}
+    }
+    /* The links wrap onto their own row, where the separator that divided
+       them from the CV pills reads as a stray character */
+    #ag-topbar .ag-divider {
+        display: none;
+    }
+    #ag-jobfit-report {
+        padding: 4px 14px 14px 14px;
+    }
+}
 """
 
 
 def build_theme() -> gr.themes.Base:
-    """Return the Aegean Twin Gradio theme with light and dark token pairs."""
+    """Return the Terracotta Gradio theme with light and dark token pairs."""
     return gr.themes.Soft(
-        primary_hue="sky",
-        neutral_hue="slate",
-        font=[gr.themes.GoogleFont("Inter"), "system-ui", "sans-serif"],
-        font_mono=[gr.themes.GoogleFont("JetBrains Mono"), "monospace"],
+        primary_hue="orange",
+        neutral_hue="stone",
+        font=[gr.themes.GoogleFont("Public Sans"), "system-ui", "sans-serif"],
+        font_mono=[gr.themes.GoogleFont("IBM Plex Mono"), "monospace"],
     ).set(
-        body_background_fill="#FAFAF8",
-        body_background_fill_dark="#0B1220",
-        body_text_color="#0F172A",
-        body_text_color_dark="#E6EBF4",
+        body_background_fill="#FBF9F5",
+        body_background_fill_dark="#17140F",
+        body_text_color="#4A443D",
+        body_text_color_dark="#C9C0B2",
         background_fill_primary="#FFFFFF",
-        background_fill_primary_dark="#121B2E",
-        background_fill_secondary="#F8FAFC",
-        background_fill_secondary_dark="#0F1728",
-        border_color_primary="#E2E8F0",
-        border_color_primary_dark="#223047",
-        button_primary_background_fill="#0EA5E9",
-        button_primary_background_fill_dark="#0EA5E9",
+        background_fill_primary_dark="#201C16",
+        background_fill_secondary="#FBF9F5",
+        background_fill_secondary_dark="#17140F",
+        border_color_primary="#E6E0D6",
+        border_color_primary_dark="#302A22",
+        button_primary_background_fill="#B4501E",
+        button_primary_background_fill_dark="#E0793C",
         button_primary_text_color="#FFFFFF",
-        button_primary_text_color_dark="#FFFFFF",
+        button_primary_text_color_dark="#17140F",
     )
 
 
@@ -717,6 +810,18 @@ _META_HEAD: str = (
     f'<meta name="twitter:title" content="{OG_TITLE}">'
     f'<meta name="twitter:description" content="{OG_DESCRIPTION}">'
     f'<meta name="twitter:image" content="{OG_IMAGE_URL}">'
+)
+
+# Newsreader for the headline, Public Sans for the UI, IBM Plex Mono for
+# eyebrows. Loaded here rather than through the Gradio theme so the exact
+# weights and the serif italic are available to the custom CSS.
+_FONTS_HEAD: str = (
+    '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>'
+    '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?'
+    "family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400"
+    "&family=Public+Sans:wght@400;500;600"
+    "&family=IBM+Plex+Mono:wght@400;500"
+    '&display=swap">'
 )
 
 # Gradio's SPA shell hardcodes its own og:/twitter: tags (Gradio branding,
@@ -772,87 +877,6 @@ _THEME_HEAD: str = (
     "</script>"
 )
 
-# A two-step tour anchored to its targets: the name field, then the
-# job-fit tab. Shown once per browser; Gradio mounts the DOM
-# asynchronously, hence the init retries. The card is moved onto
-# document.body on first show so absolute page coordinates apply.
-_HINT_HEAD: str = """
-<script>
-window.agHintSteps = [
-  {
-    text: "Add your <b>name</b> here and I will address you personally " +
-          "through the whole conversation.",
-    button: "Next",
-    target: function () { return document.getElementById("ag-name-input"); }
-  },
-  {
-    text: "Paste a job description in <b>Analyze a job fit</b> and get an " +
-          "honest, requirement-by-requirement fit report.",
-    button: "Got it",
-    target: function () {
-      var tabs = document.querySelectorAll('button[role="tab"]');
-      for (var i = 0; i < tabs.length; i++) {
-        if (tabs[i].textContent.indexOf("job fit") !== -1) { return tabs[i]; }
-      }
-      return null;
-    }
-  }
-];
-window.agHintIdx = 0;
-window.agHintShow = function (index) {
-  var hint = document.getElementById("ag-hint");
-  var step = window.agHintSteps[index];
-  if (!hint || !step) { window.agDismissHint(); return; }
-  window.agHintIdx = index;
-  if (hint.parentElement !== document.body) { document.body.appendChild(hint); }
-  document.getElementById("ag-hint-step").textContent =
-    "Tip " + (index + 1) + " of " + window.agHintSteps.length;
-  document.getElementById("ag-hint-text").innerHTML = step.text;
-  document.getElementById("ag-hint-next").textContent = step.button;
-  hint.style.display = "flex";
-  var target = step.target();
-  if (target) {
-    var rect = target.getBoundingClientRect();
-    var cardWidth = hint.offsetWidth || 300;
-    var center = rect.left + rect.width / 2;
-    var left = Math.max(
-      12, Math.min(center - cardWidth / 2, window.innerWidth - cardWidth - 12)
-    );
-    hint.style.top = (rect.bottom + window.scrollY + 12) + "px";
-    hint.style.left = (left + window.scrollX) + "px";
-    hint.style.setProperty("--caret-x", (center - left - 6) + "px");
-  }
-};
-window.agHintNext = function () {
-  if (window.agHintIdx + 1 < window.agHintSteps.length) {
-    window.agHintShow(window.agHintIdx + 1);
-  } else {
-    window.agDismissHint();
-  }
-};
-window.agDismissHint = function () {
-  localStorage.setItem("ag-hint-dismissed", "1");
-  var hint = document.getElementById("ag-hint");
-  if (hint) { hint.style.display = "none"; }
-};
-window.agInitHint = function () {
-  var hint = document.getElementById("ag-hint");
-  if (hint && hint.style.display === "" &&
-      localStorage.getItem("ag-hint-dismissed") !== "1") {
-    window.agHintShow(0);
-  }
-};
-window.addEventListener("resize", function () {
-  var hint = document.getElementById("ag-hint");
-  if (hint && hint.style.display === "flex") {
-    window.agHintShow(window.agHintIdx);
-  }
-});
-setTimeout(window.agInitHint, 800);
-setTimeout(window.agInitHint, 1800);
-</script>
-"""
-
 
 def serve_kwargs() -> dict[str, Any]:
     """Return the theme/css/head kwargs for ``launch()`` or ``mount_gradio_app()``.
@@ -861,8 +885,8 @@ def serve_kwargs() -> dict[str, Any]:
     """
     return {
         "theme": build_theme(),
-        "css": AEGEAN_CSS,
-        "head": _META_HEAD + _THEME_HEAD + _HINT_HEAD,
+        "css": TERRACOTTA_CSS,
+        "head": _META_HEAD + _FONTS_HEAD + _THEME_HEAD,
     }
 
 
@@ -879,41 +903,63 @@ def _photo_data_uri(assets_dir: Path = ASSETS_DIR) -> str | None:
 
 def _topbar_left_html() -> str:
     """Build the wordmark side of the top bar."""
-    return """
-    <div>
-        <p class="ag-wordmark">George Traskas</p>
-        <p class="ag-tagline">AI/ML · Data Science</p>
-    </div>
-    """
+    return '<p class="ag-wordmark">George Traskas</p>'
 
 
 def _topbar_right_html() -> str:
     """Build the links + theme-toggle side of the top bar."""
-    return """
+    return f"""
     <div class="ag-topbar-right">
-        <a class="ag-link" href="https://www.linkedin.com/in/george-traskas/" target="_blank" rel="noopener">LinkedIn</a>
-        <a class="ag-link" href="https://github.com/gtraskas" target="_blank" rel="noopener">GitHub</a>
-        <a class="ag-link" href="mailto:georgiost77@gmail.com">Email</a>
+        <span class="ag-divider"></span>
+        <a class="ag-link" href="{LINKEDIN_URL}" target="_blank" rel="noopener">LinkedIn</a>
+        <a class="ag-link" href="{GITHUB_URL}" target="_blank" rel="noopener">GitHub</a>
         <button id="ag-theme-btn" onclick="agToggleTheme()" title="Switch light / dark"><span id="ag-theme-icon">☾</span></button>
     </div>
     """
 
 
 def _hero_html() -> str:
-    """Build the hero: portrait in an accent ring, headline, support line."""
+    """Build the hero: portrait, headline, support line."""
     photo_uri = _photo_data_uri()
     photo_tag = (
         f'<img class="ag-photo" src="{photo_uri}" alt="George Traskas" />'
         if photo_uri
-        else ""
+        else "<span></span>"
     )
     return f"""
     <div id="ag-hero">
         {photo_tag}
-        <p class="ag-status">● Open to work</p>
-        <h1 class="ag-hl">Ask me anything.<br>I'm George, <em>in AI form</em>.</h1>
-        <p class="ag-support">Recruiters welcome: ask about my experience and
-        projects, or paste a job description and get my honest fit for the role.</p>
+        <div>
+            <h1 class="ag-hl">Talk to me. Or rather, to <em>my AI</em>.</h1>
+            <p class="ag-support">It answers from my own notes. Ask anything,
+            or paste a job description for an honest fit report.</p>
+        </div>
+    </div>
+    """
+
+
+def _proof_strip_html() -> str:
+    """Build the three-cell proof strip: current role, shipped app, this page."""
+    return f"""
+    <div id="ag-proof">
+        <div class="ag-proof-cell">
+            <p class="ag-proof-eyebrow">Now</p>
+            <p class="ag-proof-title">Predictive Fitness</p>
+            <p class="ag-proof-body">Cut false alert noise <strong>over 90%</strong>
+            with an evidence-gated redesign.</p>
+        </div>
+        <div class="ag-proof-cell">
+            <p class="ag-proof-eyebrow">Shipped</p>
+            <p class="ag-proof-title">MolekitChen</p>
+            <p class="ag-proof-body">On the App Store.
+            <a href="{MOLEKITCHEN_URL}" target="_blank" rel="noopener">See it →</a></p>
+        </div>
+        <div class="ag-proof-cell">
+            <p class="ag-proof-eyebrow">This page</p>
+            <p class="ag-proof-title">AskGeorge</p>
+            <p class="ag-proof-body">Open-source RAG agent.
+            <a href="{REPO_URL}" target="_blank" rel="noopener">Code →</a></p>
+        </div>
     </div>
     """
 
@@ -955,19 +1001,13 @@ def _booking_iframe_html(url: str) -> str:
 
 
 def _footer_html() -> str:
-    """Build the footer: open-source note plus quiet project links."""
-    links = " · ".join(
-        f'<a href="{url}" target="_blank" rel="noopener">{label}</a>'
-        for label, url in PROJECT_LINKS
-    )
+    """Build the footer: the human route out, plus the AI disclosure."""
     return f"""
     <div id="ag-footer">
-        <div class="ag-foot-line">
-            This assistant is itself one of my projects: an
-            <a href="{REPO_URL}" target="_blank" rel="noopener">open-source</a>
-            production agentic AI system.
-        </div>
-        <div class="ag-foot-links">{links}</div>
+        <p class="ag-foot-line">Prefer a human?
+        <a href="mailto:{EMAIL_ADDRESS}">Email me</a>.
+        Open to senior AI/ML roles, one month notice.</p>
+        <p class="ag-disclosure">Answers are AI-generated from my own notes</p>
     </div>
     """
 
@@ -982,58 +1022,32 @@ def _visitor_ip(request: gr.Request | None) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def _clean_name(name: str | None) -> str:
-    """Normalize the optional visitor name: collapse whitespace, cap length."""
-    return " ".join((name or "").split())[:60]
-
-
-def _with_name(message: str, name: str) -> str:
-    """Attach the visitor's name as a bracketed note the prompt rules expect."""
-    if not name:
-        return message
-    return f"{message}\n\n[The visitor's name: {name}]"
-
-
 def _wrap_chat(
-    chat_fn: Callable[..., Any], limiter: RateLimiter, instant: InstantFAQ
+    chat_fn: Callable[..., Any], limiter: RateLimiter
 ) -> Callable[..., Any]:
-    """Wrap the chat function with instant answers and rate limiting.
+    """Wrap the chat function with rate limiting.
 
-    Instant FAQ matches are checked first (on the raw message, so the
-    matcher stays exact) and served immediately — they cost nothing, so
-    they bypass the rate limiter and never consume a visitor's message
-    budget. Everything else passes the limiter, then reaches the agent
-    with the visitor's name attached, so replies can address them and
-    contact notifications carry who was asking.
+    Every visitor message reaches the model: there are no canned replies,
+    because the page exists to show how the assistant actually answers.
     """
     if inspect.isasyncgenfunction(chat_fn):
 
-        async def async_wrapper(
-            message: str, history: list, request: gr.Request, name: str = ""
-        ):
-            instant_reply = instant.match(message)
-            if instant_reply:
-                yield instant_reply
-                return
+        async def async_wrapper(message: str, history: list, request: gr.Request):
             refusal = limiter.check(_visitor_ip(request))
             if refusal:
                 yield refusal
                 return
-            async for partial in chat_fn(_with_name(message, name), history):
+            async for partial in chat_fn(message, history):
                 yield partial
 
         return async_wrapper
 
-    def sync_wrapper(message: str, history: list, request: gr.Request, name: str = ""):
-        instant_reply = instant.match(message)
-        if instant_reply:
-            yield instant_reply
-            return
+    def sync_wrapper(message: str, history: list, request: gr.Request):
         refusal = limiter.check(_visitor_ip(request))
         if refusal:
             yield refusal
             return
-        yield from chat_fn(_with_name(message, name), history)
+        yield from chat_fn(message, history)
 
     return sync_wrapper
 
@@ -1079,7 +1093,7 @@ def _make_responder(chat_fn: Callable[..., Any]) -> Callable[..., Any]:
     if inspect.isasyncgenfunction(chat_fn):
 
         async def respond_async(
-            message: str, history: list | None, name: str, request: gr.Request
+            message: str, history: list | None, request: gr.Request
         ):
             message = (message or "").strip()
             history = history or []
@@ -1088,12 +1102,12 @@ def _make_responder(chat_fn: Callable[..., Any]) -> Callable[..., Any]:
                 return
             shown = [*history, {"role": "user", "content": message}]
             yield shown, ""
-            async for partial in chat_fn(message, history, request, _clean_name(name)):
+            async for partial in chat_fn(message, history, request):
                 yield [*shown, {"role": "assistant", "content": partial}], ""
 
         return respond_async
 
-    def respond_sync(message: str, history: list | None, name: str, request: gr.Request):
+    def respond_sync(message: str, history: list | None, request: gr.Request):
         message = (message or "").strip()
         history = history or []
         if not message:
@@ -1101,21 +1115,20 @@ def _make_responder(chat_fn: Callable[..., Any]) -> Callable[..., Any]:
             return
         shown = [*history, {"role": "user", "content": message}]
         yield shown, ""
-        for partial in chat_fn(message, history, request, _clean_name(name)):
+        for partial in chat_fn(message, history, request):
             yield [*shown, {"role": "assistant", "content": partial}], ""
 
     return respond_sync
 
 
 def _build_chat_panel(
-    chat_fn: Callable[..., Any], name_box: gr.Textbox
+    chat_fn: Callable[..., Any],
 ) -> tuple[gr.Chatbot, gr.BrowserState]:
-    """Assemble the chat tab: chatbot, input, curated pills, and the expander.
+    """Assemble the chat tab: chatbot, composer, clear action, prompt pills.
 
-    A custom Blocks chat rather than gr.ChatInterface: the question pills
-    must submit on click, and external components cannot trigger a
-    ChatInterface submission. The pills render in two columns whose instant
-    group stays in sync with the InstantFAQ catalog via the CI eval.
+    A custom Blocks chat rather than gr.ChatInterface: the prompt pills must
+    submit on click, and external components cannot trigger a ChatInterface
+    submission.
 
     The conversation persists in the visitor's own browser (localStorage
     via gr.BrowserState) — nothing is stored server-side. Each completed
@@ -1123,16 +1136,15 @@ def _build_chat_panel(
 
     Args:
         chat_fn: The wrapped chat callable.
-        name_box: The top-bar visitor-name textbox feeding every handler.
 
     Returns:
         The chatbot and its browser-persisted history state, so the caller
         can restore the conversation on page load.
     """
     respond = _make_responder(chat_fn)
-    # The secret must be stable across server restarts (Modal scales to zero
-    # and restarts containers routinely); Gradio's default random secret
-    # would make every restart silently wipe visitors' saved conversations.
+    # The secret must be stable across server restarts (Modal restarts
+    # containers routinely); Gradio's default random secret would make every
+    # restart silently wipe visitors' saved conversations.
     saved_history = gr.BrowserState(
         [], storage_key="ag-chat-history", secret="askgeorge-browser-state-v1"
     )
@@ -1146,7 +1158,7 @@ def _build_chat_panel(
         placeholder=CHAT_PLACEHOLDER,
     )
     textbox = gr.Textbox(
-        placeholder="Ask about my experience, projects, or availability…",
+        placeholder=COMPOSER_PLACEHOLDER,
         show_label=False,
         submit_btn=True,
         elem_id="ag-chat-input",
@@ -1156,9 +1168,9 @@ def _build_chat_panel(
         """Persist the finished exchange to the visitor's browser."""
         return history or []
 
-    textbox.submit(
-        respond, inputs=[textbox, chatbot, name_box], outputs=[chatbot, textbox]
-    ).then(_save_history, inputs=[chatbot], outputs=[saved_history])
+    textbox.submit(respond, inputs=[textbox, chatbot], outputs=[chatbot, textbox]).then(
+        _save_history, inputs=[chatbot], outputs=[saved_history]
+    )
     with gr.Row(elem_id="ag-chat-actions"):
         clear_button = gr.Button("Clear chat", size="sm", elem_classes="ag-clear")
 
@@ -1168,40 +1180,33 @@ def _build_chat_panel(
 
     clear_button.click(_clear_chat, outputs=[chatbot, textbox, saved_history])
 
-    def _chip_handler(question: str) -> Callable[..., Any]:
+    def _pill_handler(question: str) -> Callable[..., Any]:
         if inspect.isasyncgenfunction(respond):
 
-            async def handler_async(history: list | None, name: str, request: gr.Request):
-                async for update in respond(question, history, name, request):
+            async def handler_async(history: list | None, request: gr.Request):
+                async for update in respond(question, history, request):
                     yield update
 
             return handler_async
 
-        def handler_sync(history: list | None, name: str, request: gr.Request):
-            yield from respond(question, history, name, request)
+        def handler_sync(history: list | None, request: gr.Request):
+            yield from respond(question, history, request)
 
         return handler_sync
 
-    def _chip_column(label: str, questions: list[str]) -> None:
-        with gr.Column(elem_classes="ag-qcol"):
-            gr.HTML(f'<p class="ag-label">{label}</p>')
-            for question in questions:
-                chip = gr.Button(question, size="sm", elem_classes="ag-q")
-                chip.click(
-                    _chip_handler(question),
-                    inputs=[chatbot, name_box],
-                    outputs=[chatbot, textbox],
-                ).then(_save_history, inputs=[chatbot], outputs=[saved_history])
-
+    gr.HTML('<p class="ag-label">Try one of these</p>')
     with gr.Row(elem_id="ag-qcols"):
-        _chip_column("Quick answers", FAQ_PILLS)
-        _chip_column("Ask the AI live", LIVE_AI_QUESTIONS)
+        for question in PROMPT_PILLS:
+            pill = gr.Button(question, size="sm", elem_classes="ag-q")
+            pill.click(
+                _pill_handler(question),
+                inputs=[chatbot],
+                outputs=[chatbot, textbox],
+            ).then(_save_history, inputs=[chatbot], outputs=[saved_history])
     return chatbot, saved_history
 
 
-def build_ui(
-    chat_fn: Callable[..., Any], jobfit_fn: Callable[[str], Any]
-) -> gr.Blocks:
+def build_ui(chat_fn: Callable[..., Any], jobfit_fn: Callable[[str], Any]) -> gr.Blocks:
     """Assemble the complete AskGeorge page: chat plus job-fit analysis.
 
     Args:
@@ -1213,7 +1218,7 @@ def build_ui(
         A :class:`gr.Blocks` page; serve it with :func:`serve_kwargs` applied.
     """
     limiter = RateLimiter()
-    chat_fn = _wrap_chat(chat_fn, limiter, InstantFAQ())
+    chat_fn = _wrap_chat(chat_fn, limiter)
     jobfit_handler = _jobfit_handler(jobfit_fn, limiter)
     available_cvs = [
         (label, ASSETS_DIR / filename)
@@ -1221,57 +1226,31 @@ def build_ui(
         if (ASSETS_DIR / filename).exists()
     ]
     with gr.Blocks(title="AskGeorge") as demo:
-        saved_name = gr.BrowserState(
-            "", storage_key="ag-visitor-name", secret="askgeorge-browser-state-v1"
-        )
         with gr.Row(elem_id="ag-topbar"):
             gr.HTML(_topbar_left_html(), elem_classes="ag-grow")
-            name_box = gr.Textbox(
-                placeholder="Your name",
-                show_label=False,
-                max_lines=1,
-                scale=0,
-                min_width=140,
-                elem_id="ag-name-input",
-            )
             for label, path in available_cvs:
-                gr.DownloadButton(
-                    label, value=str(path), size="sm", elem_classes="ag-cv"
-                )
+                gr.DownloadButton(label, value=str(path), size="sm", elem_classes="ag-cv")
             gr.HTML(_topbar_right_html())
-
-        def _save_name(name: str | None) -> str:
-            """Persist the visitor's name to their browser."""
-            return _clean_name(name)
-
-        name_box.blur(_save_name, inputs=[name_box], outputs=[saved_name])
         gr.HTML(_hero_html())
-        gr.HTML(
-            '<div id="ag-hint" role="note">'
-            '<p class="ag-hint-eyebrow" id="ag-hint-step"></p>'
-            '<p class="ag-hint-text" id="ag-hint-text"></p>'
-            '<div class="ag-hint-actions">'
-            '<button class="ag-hint-skip" onclick="agDismissHint()">Skip</button>'
-            '<button class="ag-hint-btn" id="ag-hint-next" onclick="agHintNext()">'
-            "Next</button>"
-            "</div></div>"
-        )
         with gr.Tabs():
-            with gr.Tab("Chat with me"):
-                chatbot, saved_history = _build_chat_panel(chat_fn, name_box)
-            with gr.Tab("Analyze a job fit"):
+            with gr.Tab("Ask me anything"):
+                chatbot, saved_history = _build_chat_panel(chat_fn)
+            with gr.Tab("Check a job fit"):
+                gr.HTML(
+                    '<p id="ag-jobfit-intro">Paste a job description. You get a '
+                    "requirement-by-requirement read on where I fit, where I "
+                    "don't, and what I'd need to learn.</p>"
+                )
                 job_description = gr.Textbox(
                     show_label=False,
                     placeholder="Paste the full job description here…",
-                    lines=16,
+                    lines=12,
                     elem_id="ag-jobfit-box",
                 )
-                with gr.Row():
-                    analyze_button = gr.Button(
-                        "Analyze fit", variant="primary", scale=1
-                    )
+                with gr.Row(elem_id="ag-jobfit-actions"):
+                    analyze_button = gr.Button("Analyze fit", elem_classes="ag-primary")
                     clear_button = gr.ClearButton(
-                        value="Clear for a new analysis", variant="secondary", scale=1
+                        value="Clear for a new analysis", elem_classes="ag-clear"
                     )
                 report = gr.Markdown(elem_id="ag-jobfit-report")
                 clear_button.add([job_description, report])
@@ -1284,15 +1263,12 @@ def build_ui(
         if calendar_url:
             with gr.Accordion("Book an intro call", open=False, elem_id="ag-book"):
                 gr.HTML(_booking_iframe_html(calendar_url))
+        gr.HTML(_proof_strip_html())
         gr.HTML(_footer_html())
 
-        def _restore_session(saved: list | None, name: str | None) -> tuple[list, str]:
-            """Bring the stored conversation and name back on page load."""
-            return saved or [], name or ""
+        def _restore_session(saved: list | None) -> list:
+            """Bring the stored conversation back on page load."""
+            return saved or []
 
-        demo.load(
-            _restore_session,
-            inputs=[saved_history, saved_name],
-            outputs=[chatbot, name_box],
-        )
+        demo.load(_restore_session, inputs=[saved_history], outputs=[chatbot])
     return demo

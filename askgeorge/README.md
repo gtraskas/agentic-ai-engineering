@@ -13,7 +13,6 @@ askgeorge/
 ├── core/
 │   ├── config.py           # paths, models, env accessors
 │   ├── profile.py          # background corpus loading
-│   ├── instant.py          # instant FAQ answers (no LLM call)
 │   ├── knowledge.py        # hybrid BM25+dense RAG in Qdrant (:memory:), FastEmbed
 │   ├── prompts.py          # system prompt + per-question context injection
 │   ├── jobfit.py           # structured job-fit pipeline (parse/judge/synth/verify)
@@ -24,25 +23,23 @@ askgeorge/
 │   ├── agent_scratch.py    # hand-rolled streaming tool-calling loop
 │   └── agent_sdk.py        # OpenAI Agents SDK backend (default)
 ├── ui/
-│   ├── theme.py            # Refined Aegean theme, CSS, layout, rate-limit wrapper
+│   ├── theme.py            # Terracotta theme, CSS, layout, rate-limit wrapper
 │   └── assets/             # photo.jpg, CV PDFs
 └── me/                     # knowledge base (markdown)
 
 tests/
-├── retrieval_eval.py       # golden-set retrieval eval, gates every CI run
-└── instant_eval.py         # instant-FAQ matcher eval, gates every CI run
+└── retrieval_eval.py       # golden-set retrieval eval, gates every CI run
 ```
 
 - **LLM:** any model via [OpenRouter](https://openrouter.ai) — `google/gemini-3.1-flash-lite` (fast, consistent, ~$0.10/M input; pennies per day under the global rate cap) with reasoning effort capped at `low` for fast first tokens. Every call carries an OpenRouter server-side fallback chain to the best free model from the benchmark (`google/gemma-4-26b-a4b-it:free`), so a paid-model outage degrades to free instead of failing. Both model ids are constants in [`core/config.py`](core/config.py)
 - **Two switchable agent backends:** a from-scratch tool-calling loop and the OpenAI Agents SDK (`AGENT_BACKEND=scratch|sdk`)
 - **Input guardrail (SDK backend):** a parallel judge LLM with a Pydantic verdict blocks off-topic, dangerous, and prompt-injection messages before they reach the main agent
 - **Rate limiting:** in-memory sliding windows — 15 messages/hour per visitor, 100/day globally — with polite first-person refusals
-- **Instant FAQ answers:** the most common recruiter questions return a curated first-person reply immediately — no retrieval, no model call, no API cost — and don't consume the visitor's rate-limit budget. Matching is conservative (normalized exact + high-bar fuzzy), and a two-sided eval in CI guards against both misses and false positives
-- **Browser-side persistence:** the conversation and the visitor's optional name live in the visitor's own browser (encrypted localStorage via gr.BrowserState) and are restored on page load; Clear chat wipes both. Replies greet the visitor by name, and contact notifications carry who was asking. A dismissible one-time hint points new visitors at the job-fit tab
-- **Question pills:** two columns under the chat input — "Quick answers" (five instant-FAQ questions) and "Ask the AI live" (five retrieval-golden-set questions that demonstrate the RAG + LLM pipeline). One click submits the question, and the CI eval asserts every FAQ pill has an instant answer and every live pill reaches the model
+- **Browser-side persistence:** the conversation lives in the visitor's own browser (encrypted localStorage via gr.BrowserState) and is restored on page load; Clear chat wipes it
+- **Prompt pills:** six suggested questions under the composer. Every one goes through the live RAG + LLM path, and the CI eval asserts each is either covered by the retrieval golden set or explicitly recorded as prompt-answered, so no pill ships unverified
 - **Job-fit analysis:** a dedicated tab where a recruiter pastes a job description; a structured pipeline (parse → per-requirement RAG judgment via `asyncio.gather` → deterministic band → synthesis → anti-flattery verifier) returns an honest, evidence-backed fit report and emails George each run. The description is treated as untrusted input
 - **RAG:** hybrid dense + sparse (BM25) retrieval, embedded locally with FastEmbed and fused in `QdrantClient(":memory:")`; heading-aware chunking; the summary stays pinned in the prompt; a retrieval golden-set eval gates every CI run
-- **UI:** Gradio Blocks with a custom Aegean Minimal theme; the header portrait and the per-role Download CV buttons appear when `ui/assets/` holds `photo.jpg` and the two CV PDFs named in [`ui/theme.py`](ui/theme.py). The layout adapts down to 375 px wide phones
+- **UI:** Gradio Blocks with a custom Terracotta theme; the header portrait and the per-role Download CV buttons appear when `ui/assets/` holds `photo.jpg` and the two CV PDFs named in [`ui/theme.py`](ui/theme.py). The layout adapts down to 375 px wide phones
 - **Link previews:** OpenGraph and Twitter-card meta tags plus a preview card at `/media/og_card.jpg`, so the shared URL unfurls with a portrait, title, and description in LinkedIn, WhatsApp, and Slack
 
 ## Design decisions
@@ -82,12 +79,12 @@ The reasoning behind the parts that are not obvious from the code.
   what a framework abstracts — delta assembly, tool rounds, safety caps — and the
   Agents SDK version delivers the same behaviour in a tenth of the code. Build the
   baseline, then let the abstraction earn its place.
-- **Instant answers are matched conservatively on purpose.** Only a normalized exact
-  match or a near-identical fuzzy match (0.90 similarity) against curated trigger
-  phrasings returns a canned reply; anything else goes to the full pipeline. A canned
-  answer to a question it does not quite fit reads worse than a slower real one, so
-  the CI eval asserts pass-throughs ("Are you open to relocating?") as strictly as
-  matches.
+- **No canned answers.** An earlier version served curated replies to the most common
+  recruiter questions with no model call — free, instant, and a lie about the product.
+  The questions most likely to be asked were exactly the ones that never reached the
+  model, so the busiest path through a page whose whole claim is "this is how I answer"
+  was a lookup table. Every message now goes to the model. The cost is real: those
+  questions used to bypass the rate limiter and now consume the global daily budget.
 - **Grounding instead of server-side memory.** The model answers only from retrieved
   background; conversation history is replayed from the browser each turn. The correct
   stateless pattern for serverless, and immune to container restarts.

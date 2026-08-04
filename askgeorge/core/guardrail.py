@@ -20,7 +20,7 @@ from pydantic import BaseModel, Field
 from askgeorge.core.prompts import CONTEXT_OPEN_TAG
 
 GUARDRAIL_REFUSAL: str = (
-    "I'd rather keep this space about my work and experience — ask me anything "
+    "I'd rather keep this space about my work and experience. Ask me anything "
     "about my projects, skills, or availability, and I'm happy to help."
 )
 
@@ -33,9 +33,9 @@ _JUDGE_INSTRUCTIONS: str = (
     "Wine-VFM, MolekitChen, alerting, causal pipeline, this AskGeorge app "
     "and its features such as the job-fit analysis) INCLUDING challenges, "
     "trade-offs, failures, lessons learned, and 'what went wrong' questions "
-    "— an engineer discussing hard problems in his own work is professional "
-    "content, not criticism; a visitor sharing their name/email/company; "
-    "questions about salary, rates, or compensation (even insistent ones — "
+    "(an engineer discussing hard problems in his own work is professional "
+    "content, not criticism); a visitor sharing their name/email/company; "
+    "questions about salary, rates, or compensation (even insistent ones: "
     "the assistant has its own policy for those); job descriptions or role "
     "fit questions; and normal greetings, thanks, or polite small talk.\n\n"
     "OUT OF SCOPE (reject): requests to write, debug, or explain the "
