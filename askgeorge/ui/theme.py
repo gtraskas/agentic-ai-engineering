@@ -17,7 +17,9 @@ import base64
 import inspect
 import logging
 import re
+import shutil
 import tempfile
+import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -25,6 +27,7 @@ from typing import Any
 import gradio as gr
 
 from askgeorge.core.config import ASSETS_DIR, PUBLIC_BASE_URL, booking_url
+from askgeorge.core.language import RefusalVoice
 from askgeorge.core.ratelimit import RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -58,6 +61,10 @@ PROMPT_PILLS: list[str] = [
 # messages never carry it, so it is the signal that a real report exists.
 REPORT_MARKER: str = "## Fit assessment"
 REPORT_FILENAME: str = "george-traskas-fit-report.md"
+REPORT_DIR_PREFIX: str = "askgeorge-report-"
+# Long enough that a visitor can always finish the download they just
+# triggered, short enough that a container running for weeks stays clean
+REPORT_TTL_SECONDS: int = 3_600
 
 CHAT_PLACEHOLDER: str = "Ask about my experience and projects. I answer as George."
 COMPOSER_PLACEHOLDER: str = "Ask anything"
@@ -301,10 +308,12 @@ footer {
 #ag-chat .label-wrap, #ag-chat label {
     display: none !important;
 }
+/* No min-height here: Gradio writes min-height and max-height inline from
+   the Chatbot's own arguments, and an inline style beats a stylesheet rule,
+   so anything set here is silently ignored. Change CHAT_HEIGHT instead. */
 #ag-chat {
     background: transparent !important;
     box-shadow: none !important;
-    min-height: 240px;
 }
 #ag-chat .message-row.panel,
 #ag-chat .message-row.panel .flex-wrap,
@@ -1121,19 +1130,22 @@ def _visitor_ip(request: gr.Request | None) -> str:
 
 
 def _wrap_chat(
-    chat_fn: Callable[..., Any], limiter: RateLimiter
+    chat_fn: Callable[..., Any], limiter: RateLimiter, refusals: RefusalVoice
 ) -> Callable[..., Any]:
     """Wrap the chat function with rate limiting.
 
     Every visitor message reaches the model: there are no canned replies,
-    because the page exists to show how the assistant actually answers.
+    because the page exists to show how the assistant actually answers. The
+    one exception is a rate-limit refusal, which by design costs no model
+    call, so it is the only reply that would otherwise arrive in English
+    however the visitor asked.
     """
     if inspect.isasyncgenfunction(chat_fn):
 
         async def async_wrapper(message: str, history: list, request: gr.Request):
             refusal = limiter.check(_visitor_ip(request))
             if refusal:
-                yield refusal
+                yield await asyncio.to_thread(refusals.localize, refusal, message)
                 return
             async for partial in chat_fn(message, history):
                 yield partial
@@ -1143,11 +1155,31 @@ def _wrap_chat(
     def sync_wrapper(message: str, history: list, request: gr.Request):
         refusal = limiter.check(_visitor_ip(request))
         if refusal:
-            yield refusal
+            yield refusals.localize(refusal, message)
             return
         yield from chat_fn(message, history)
 
     return sync_wrapper
+
+
+def _prune_old_reports(root: Path, keep_seconds: int = REPORT_TTL_SECONDS) -> None:
+    """Delete report directories older than ``keep_seconds``.
+
+    The container stays warm for weeks, so without this every download
+    leaves a directory behind for the life of the container. Runs on each
+    write, which is rare enough to be free and often enough to stay bounded.
+
+    Args:
+        root: Directory holding the per-report directories.
+        keep_seconds: Age above which a report directory is removed.
+    """
+    cutoff = time.time() - keep_seconds
+    for directory in root.glob(f"{REPORT_DIR_PREFIX}*"):
+        try:
+            if directory.is_dir() and directory.stat().st_mtime < cutoff:
+                shutil.rmtree(directory, ignore_errors=True)
+        except OSError as exc:  # a concurrent download may already have gone
+            logger.debug("Could not prune %s: %s", directory, exc)
 
 
 def _write_report_file(markdown: str) -> Path:
@@ -1163,14 +1195,16 @@ def _write_report_file(markdown: str) -> Path:
     Returns:
         Path to the written Markdown file.
     """
-    directory = Path(tempfile.mkdtemp(prefix="askgeorge-report-"))
+    root = Path(tempfile.gettempdir())
+    _prune_old_reports(root)
+    directory = Path(tempfile.mkdtemp(prefix=REPORT_DIR_PREFIX, dir=root))
     path = directory / REPORT_FILENAME
     path.write_text(markdown, encoding="utf-8")
     return path
 
 
 def _jobfit_handler(
-    jobfit_fn: Callable[[str], Any], limiter: RateLimiter
+    jobfit_fn: Callable[[str], Any], limiter: RateLimiter, refusals: RefusalVoice
 ) -> Callable[..., Any]:
     """Wrap the job-fit analyzer with the shared rate limiter.
 
@@ -1187,7 +1221,10 @@ def _jobfit_handler(
     async def handler(job_description: str, request: gr.Request):
         refusal = limiter.check(_visitor_ip(request))
         if refusal:
-            yield refusal, ready, no_download
+            localized = await asyncio.to_thread(
+                refusals.localize, refusal, job_description
+            )
+            yield localized, ready, no_download
             return
         last = ""
         async for markdown in jobfit_fn(job_description):
@@ -1342,8 +1379,9 @@ def build_ui(chat_fn: Callable[..., Any], jobfit_fn: Callable[[str], Any]) -> gr
         A :class:`gr.Blocks` page; serve it with :func:`serve_kwargs` applied.
     """
     limiter = RateLimiter()
-    chat_fn = _wrap_chat(chat_fn, limiter)
-    jobfit_handler = _jobfit_handler(jobfit_fn, limiter)
+    refusals = RefusalVoice()
+    chat_fn = _wrap_chat(chat_fn, limiter, refusals)
+    jobfit_handler = _jobfit_handler(jobfit_fn, limiter, refusals)
     available_cvs = [
         (label, ASSETS_DIR / filename)
         for label, filename in CV_FILES

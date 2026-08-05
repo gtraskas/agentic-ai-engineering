@@ -33,7 +33,7 @@ from askgeorge.core.config import (
 )
 from askgeorge.core.guardrail import GUARDRAIL_REFUSAL, build_scope_guardrail
 from askgeorge.core.knowledge import BackgroundKnowledge
-from askgeorge.core.language import SearchQueryTranslator
+from askgeorge.core.language import RefusalVoice, SearchQueryTranslator
 from askgeorge.core.profile import Profile
 from askgeorge.core.prompts import augment_with_context, build_system_prompt
 from askgeorge.core.tools import ToolDispatcher
@@ -56,6 +56,7 @@ class SdkAgent:
         set_tracing_disabled(True)
         self._knowledge = knowledge
         self._translator = SearchQueryTranslator()
+        self._refusals = RefusalVoice(self._translator)
         model = OpenAIChatCompletionsModel(
             model=CHAT_MODEL,
             openai_client=AsyncOpenAI(base_url=OPENROUTER_BASE_URL, api_key=api_key),
@@ -119,7 +120,11 @@ class SdkAgent:
                     reply += event.data.delta
                     yield reply
         except InputGuardrailTripwireTriggered:
-            yield GUARDRAIL_REFUSAL
+            # The refusal is the only reply the model never writes, so it
+            # would otherwise arrive in English however the visitor asked
+            yield await asyncio.to_thread(
+                self._refusals.localize, GUARDRAIL_REFUSAL, message
+            )
             return
         if not reply:
             final = str(result.final_output or "")
