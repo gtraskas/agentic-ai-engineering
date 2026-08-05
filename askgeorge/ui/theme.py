@@ -878,6 +878,74 @@ _THEME_HEAD: str = (
 )
 
 
+# Follow the conversation as it streams.
+#
+# The chatbot is built with no fixed height and a max height, which makes
+# the OUTER block the scrolling element. Gradio's own auto-scroll drives an
+# inner wrapper it expects to own, so it scrolls a node that does not
+# scroll and the view stays pinned to the top: every reply after the first
+# rendered below the visible area and never came into view. This drives the
+# element that actually scrolls.
+#
+# Sticks to the newest text only while the visitor is already at the bottom,
+# so scrolling up to re-read an earlier answer is not yanked back down. A
+# new question re-arms it and pulls the composer into view, which matters on
+# a laptop where the hero leaves the input below the fold.
+_CHAT_SCROLL_HEAD: str = """
+<script>
+window.agInitChatScroll = function () {
+  var chat = document.getElementById("ag-chat");
+  if (!chat || chat.dataset.agScroll === "1") { return; }
+  chat.dataset.agScroll = "1";
+  var stick = true;
+  var pullComposer = false;
+  var seenQuestions = chat.querySelectorAll(".user-row").length;
+  var atBottom = function () {
+    return chat.scrollTop + chat.clientHeight >= chat.scrollHeight - 24;
+  };
+  chat.addEventListener("scroll", function () { stick = atBottom(); });
+  // Our own nudges only ever scroll down, so an upward move is the visitor
+  // taking over; stop pulling the page until they ask the next question
+  var lastPageY = window.scrollY;
+  window.addEventListener("scroll", function () {
+    if (window.scrollY < lastPageY - 2) { pullComposer = false; }
+    lastPageY = window.scrollY;
+  }, { passive: true });
+  var follow = function () {
+    var questions = chat.querySelectorAll(".user-row").length;
+    if (questions < seenQuestions) {
+      // Clear chat empties the transcript; without this the counter stays
+      // high and no later question ever counts as new
+      seenQuestions = questions;
+    } else if (questions > seenQuestions) {
+      seenQuestions = questions;
+      stick = true;
+      pullComposer = true;
+    }
+    if (stick) { chat.scrollTop = chat.scrollHeight; }
+    // Checked on every tick, not once per question: when the question lands
+    // the box is still short and the composer is on screen, and it is the
+    // growing answer that pushes the composer below the fold
+    if (pullComposer) {
+      var composer = document.getElementById("ag-chat-input");
+      if (composer) {
+        var below = composer.getBoundingClientRect().bottom + 16 - window.innerHeight;
+        if (below > 0) { window.scrollBy(0, below); }
+      }
+    }
+  };
+  new MutationObserver(follow).observe(
+    chat, { childList: true, subtree: true, characterData: true }
+  );
+  follow();
+};
+setTimeout(window.agInitChatScroll, 600);
+setTimeout(window.agInitChatScroll, 1600);
+setTimeout(window.agInitChatScroll, 3200);
+</script>
+"""
+
+
 def serve_kwargs() -> dict[str, Any]:
     """Return the theme/css/head kwargs for ``launch()`` or ``mount_gradio_app()``.
 
@@ -886,7 +954,7 @@ def serve_kwargs() -> dict[str, Any]:
     return {
         "theme": build_theme(),
         "css": TERRACOTTA_CSS,
-        "head": _META_HEAD + _FONTS_HEAD + _THEME_HEAD,
+        "head": _META_HEAD + _FONTS_HEAD + _THEME_HEAD + _CHAT_SCROLL_HEAD,
     }
 
 
