@@ -7,6 +7,7 @@ non-OpenAI model wired via ``OpenAIChatCompletionsModel`` over OpenRouter.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 from collections.abc import AsyncIterator
@@ -32,6 +33,7 @@ from askgeorge.core.config import (
 )
 from askgeorge.core.guardrail import GUARDRAIL_REFUSAL, build_scope_guardrail
 from askgeorge.core.knowledge import BackgroundKnowledge
+from askgeorge.core.language import SearchQueryTranslator
 from askgeorge.core.profile import Profile
 from askgeorge.core.prompts import augment_with_context, build_system_prompt
 from askgeorge.core.tools import ToolDispatcher
@@ -53,6 +55,7 @@ class SdkAgent:
             raise OSError("Set OPENROUTER_API_KEY to run AskGeorge.")
         set_tracing_disabled(True)
         self._knowledge = knowledge
+        self._translator = SearchQueryTranslator()
         model = OpenAIChatCompletionsModel(
             model=CHAT_MODEL,
             openai_client=AsyncOpenAI(base_url=OPENROUTER_BASE_URL, api_key=api_key),
@@ -80,7 +83,11 @@ class SdkAgent:
         Yields:
             The growing reply text, suitable for Gradio streaming.
         """
-        context = self._knowledge.context_for(message)
+        # Retrieval searches an English corpus with an English-only
+        # embedding model, so a non-English question is translated first.
+        # Off the event loop: the translator uses a blocking HTTP client.
+        search_query = await asyncio.to_thread(self._translator.to_english, message)
+        context = self._knowledge.context_for(search_query)
         input_items = [
             *self._sanitize_history(history),
             {"role": "user", "content": augment_with_context(message, context)},

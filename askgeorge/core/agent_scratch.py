@@ -22,6 +22,7 @@ from askgeorge.core.config import (
     openrouter_extra_body,
 )
 from askgeorge.core.knowledge import BackgroundKnowledge
+from askgeorge.core.language import SearchQueryTranslator
 from askgeorge.core.profile import Profile
 from askgeorge.core.prompts import augment_with_context, build_system_prompt
 from askgeorge.core.tools import ToolDispatcher
@@ -45,6 +46,7 @@ class ScratchAgent:
         self._client = client or OpenAI(base_url=OPENROUTER_BASE_URL, api_key=api_key)
         self._model = CHAT_MODEL
         self._knowledge = knowledge
+        self._translator = SearchQueryTranslator(self._client)
         self._dispatcher = dispatcher
         self._system_prompt = build_system_prompt(profile)
 
@@ -58,7 +60,9 @@ class ScratchAgent:
         Yields:
             The growing reply text, suitable for Gradio streaming.
         """
-        context = self._knowledge.context_for(message)
+        # Retrieval searches an English corpus with an English-only
+        # embedding model, so a non-English question is translated first
+        context = self._knowledge.context_for(self._translator.to_english(message))
         messages: list[Any] = [
             {"role": "system", "content": self._system_prompt},
             *self._sanitize_history(history),

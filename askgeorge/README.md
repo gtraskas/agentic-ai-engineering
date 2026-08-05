@@ -14,6 +14,7 @@ askgeorge/
 │   ├── config.py           # paths, models, env accessors
 │   ├── profile.py          # background corpus loading
 │   ├── knowledge.py        # hybrid BM25+dense RAG in Qdrant (:memory:), FastEmbed
+│   ├── language.py         # translates non-English questions for retrieval
 │   ├── prompts.py          # system prompt + per-question context injection
 │   ├── jobfit.py           # structured job-fit pipeline (parse/judge/synth/verify)
 │   ├── guardrail.py        # parallel scope judge (Pydantic verdict, tripwire)
@@ -37,6 +38,8 @@ tests/
 - **Rate limiting:** in-memory sliding windows — 15 messages/hour per visitor, 100/day globally — with polite first-person refusals
 - **Browser-side persistence:** the conversation lives in the visitor's own browser (encrypted localStorage via gr.BrowserState) and is restored on page load; Clear chat wipes it
 - **Prompt pills:** six suggested questions under the composer. Every one goes through the live RAG + LLM path, and the CI eval asserts each is either covered by the retrieval golden set or explicitly recorded as prompt-answered, so no pill ships unverified
+- **Any language:** questions are answered in the language they were asked in. Because the corpus and the embedding model are English-only, a non-English question is translated to English for the retrieval step before it is searched, so the answer stays grounded instead of fluent-but-thin. Questions that are already English skip the call, so the common path costs nothing
+- **Report download:** a finished job-fit report can be downloaded as Markdown. Each report is written to its own temp directory, so concurrent visitors can never be served each other's analysis
 - **Job-fit analysis:** a dedicated tab where a recruiter pastes a job description; a structured pipeline (parse → per-requirement RAG judgment via `asyncio.gather` → deterministic band → synthesis → anti-flattery verifier) returns an honest, evidence-backed fit report and emails George each run. The description is treated as untrusted input
 - **RAG:** hybrid dense + sparse (BM25) retrieval, embedded locally with FastEmbed and fused in `QdrantClient(":memory:")`; heading-aware chunking; the summary stays pinned in the prompt; a retrieval golden-set eval gates every CI run
 - **UI:** Gradio Blocks with a custom Terracotta theme; the header portrait and the per-role Download CV buttons appear when `ui/assets/` holds `photo.jpg` and the two CV PDFs named in [`ui/theme.py`](ui/theme.py). The layout adapts down to 375 px wide phones
@@ -79,6 +82,13 @@ The reasoning behind the parts that are not obvious from the code.
   what a framework abstracts — delta assembly, tool rounds, safety caps — and the
   Agents SDK version delivers the same behaviour in a tenth of the code. Build the
   baseline, then let the abstraction earn its place.
+- **Non-English questions are translated for search, not for the answer.** The corpus
+  is English and `BAAI/bge-small-en-v1.5` is an English-only embedding model, so a Greek
+  or German question embeds poorly and retrieval returns weak chunks the model then
+  answers from fluently. Measured before the change, a Greek question about the alerting
+  work and a German one about notice period both missed their expected chunks entirely.
+  Translating the query first fixes both. A cheap function-word check skips the extra
+  call for questions that are already English, which is nearly all of them.
 - **No canned answers.** An earlier version served curated replies to the most common
   recruiter questions with no model call — free, instant, and a lie about the product.
   The questions most likely to be asked were exactly the ones that never reached the
