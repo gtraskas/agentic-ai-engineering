@@ -12,10 +12,12 @@ overrides it and is remembered in localStorage.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import inspect
 import logging
 import re
+import tempfile
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
@@ -51,6 +53,11 @@ PROMPT_PILLS: list[str] = [
     "What is your notice period?",
     "Can I talk to the real George?",
 ]
+
+# The heading _render puts on a finished report. Progress lines and error
+# messages never carry it, so it is the signal that a real report exists.
+REPORT_MARKER: str = "## Fit assessment"
+REPORT_FILENAME: str = "george-traskas-fit-report.md"
 
 CHAT_PLACEHOLDER: str = "Ask about my experience and projects. I answer as George."
 COMPOSER_PLACEHOLDER: str = "Ask anything"
@@ -613,6 +620,29 @@ button.ag-primary:hover {
     white-space: nowrap;
     width: 1%;
 }
+/* Quiet outline action under the report, in the CV-pill idiom */
+button.ag-download {
+    width: auto;
+    /* it sits directly in the tab's column flexbox, where a plain width:auto
+       still stretches the full width; align-self shrinks it to its label */
+    align-self: flex-start !important;
+    flex: 0 0 auto !important;
+    margin-top: 16px;
+    font-family: var(--ag-sans) !important;
+    font-size: var(--ag-t-ui) !important;
+    font-weight: 500 !important;
+    color: var(--ag-muted) !important;
+    background: transparent !important;
+    border: 1px solid var(--ag-border) !important;
+    border-radius: var(--ag-r-pill) !important;
+    padding: 7px 16px !important;
+    box-shadow: none !important;
+    transition: color 0.15s ease, border-color 0.15s ease;
+}
+button.ag-download:hover {
+    color: var(--ag-accent) !important;
+    border-color: var(--ag-accent) !important;
+}
 /* ---------- Booking accordion ---------- */
 #ag-book {
     background: transparent !important;
@@ -1120,28 +1150,54 @@ def _wrap_chat(
     return sync_wrapper
 
 
+def _write_report_file(markdown: str) -> Path:
+    """Write a finished report to its own temp directory for download.
+
+    Each report gets a fresh directory so concurrent visitors can never be
+    served each other's analysis, while the file inside keeps a fixed,
+    meaningful name because the browser saves it under its basename.
+
+    Args:
+        markdown: The completed report.
+
+    Returns:
+        Path to the written Markdown file.
+    """
+    directory = Path(tempfile.mkdtemp(prefix="askgeorge-report-"))
+    path = directory / REPORT_FILENAME
+    path.write_text(markdown, encoding="utf-8")
+    return path
+
+
 def _jobfit_handler(
     jobfit_fn: Callable[[str], Any], limiter: RateLimiter
 ) -> Callable[..., Any]:
     """Wrap the job-fit analyzer with the shared rate limiter.
 
-    Yields (report_markdown, button_update) pairs so the Analyze button reads
-    "Analyzing…" and is disabled while the pipeline runs — visible feedback
-    and double-click protection in one.
+    Yields (report_markdown, analyze_button, download_button) triples. The
+    Analyze button reads "Analyzing…" and is disabled while the pipeline
+    runs — visible feedback and double-click protection in one — and the
+    download appears only once a real report exists, so it never offers a
+    progress line or an error message as a file.
     """
     busy = gr.Button(value="Analyzing…", interactive=False)
     ready = gr.Button(value="Analyze fit", interactive=True)
+    no_download = gr.DownloadButton(visible=False)
 
     async def handler(job_description: str, request: gr.Request):
         refusal = limiter.check(_visitor_ip(request))
         if refusal:
-            yield refusal, ready
+            yield refusal, ready, no_download
             return
         last = ""
         async for markdown in jobfit_fn(job_description):
             last = markdown
-            yield markdown, busy
-        yield last, ready
+            yield markdown, busy, no_download
+        if REPORT_MARKER not in last:
+            yield last, ready, no_download
+            return
+        path = await asyncio.to_thread(_write_report_file, last)
+        yield last, ready, gr.DownloadButton(value=str(path), visible=True)
 
     return handler
 
@@ -1321,11 +1377,20 @@ def build_ui(chat_fn: Callable[..., Any], jobfit_fn: Callable[[str], Any]) -> gr
                         value="Clear for a new analysis", elem_classes="ag-clear"
                     )
                 report = gr.Markdown(elem_id="ag-jobfit-report")
+                download_button = gr.DownloadButton(
+                    "Download report (.md)",
+                    visible=False,
+                    elem_classes="ag-download",
+                )
                 clear_button.add([job_description, report])
+                clear_button.click(
+                    lambda: gr.DownloadButton(visible=False),
+                    outputs=[download_button],
+                )
                 analyze_button.click(
                     fn=jobfit_handler,
                     inputs=[job_description],
-                    outputs=[report, analyze_button],
+                    outputs=[report, analyze_button, download_button],
                 )
         calendar_url = booking_url()
         if calendar_url:
